@@ -1,3 +1,5 @@
-Just to get the repo initialized.
+This MSVC Solution contains a GStreamer Plug-in used to transport media traffic over a CCNx network.
+There is a single project right now that contains the 2 elements needed for the plug-in:
+- ccnxsrc, which reads packets from the network and feeds them to the GStreamer pipeline
+- ccnxsink, which sits at the end of the pipeline to publish packets onto the network
 
-Feel free to throw out this
