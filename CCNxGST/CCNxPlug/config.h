@@ -1,3 +1,10 @@
+/** \file config.h
+ * \brief Collection of common configuration parameters and environment peculiars
+ *
+ * \date Created Jan, 2010
+ * \author John Letourneau <topgun@bell-labs.com>
+ */
+
 /*
  * GStreamer, CCNx Plug-in
  * Copyright (C) 2009 John Letourneau <topgun@bell-labs.com>
@@ -25,6 +32,15 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+/**
+ * Size of the FIFO queue used between the pipeline and the network
+ */
+#define CCNX_SINK_FIFO_MAX	20
+
+/**
+ * Size of the FIFO queue used between the network and the pipeline
+ */
+#define CCNX_SRC_FIFO_MAX	5
 
 #ifdef WIN32
 #  include <windows.h>
@@ -42,6 +58,7 @@
    }
 
 #  include <process.h>
+   /** TODO fix this */
 /* #  define getpid()	_getpid() */
    static int pid() { return 1000; }
 

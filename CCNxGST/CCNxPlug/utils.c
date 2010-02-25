@@ -1,3 +1,11 @@
+/** \file utils.c
+ * \brief Utility functions for the GStreamer/CCNx plug-in code
+ *
+ * \author John Letourneau <topgun@bell-labs.com>
+ *
+ * \date Created Nov, 2009
+ */
+
 #include "StdAfx.h"
 
 /*
@@ -33,10 +41,34 @@
 #include <string.h>
 #include "utils.h"
 
+/**
+ * Retrieve the host name where the ccnd router is located
+ *
+ * Each client must contact a router in order to have their request serviced.
+ * We define an environment variable for the host name. If you want the port, CCN already
+ * has a \#define CCN_LOCAL_PORT_ENVNAME "CCN_LOCAL_PORT". The default if not set is
+ * \#define CCN_DEFAULT_UNICAST_PORT "9695" as of this writing. See ccn/ccnd.h.
+ *
+ *
+ * \return pointer to the name of the host, NULL if not set
+ */
 char*
 ccndHost() {
   return getenv( CCND_HOST_ENV_VAR );
 }
+
+/**
+ * Locate and load a client's security keys
+ *
+ * A check is made to see if the user has set their environment variable indicating
+ * the keystore file that should be used for this process. The passphrase is also
+ * an environment variable.
+ *
+ * If the environment variable is not set, a default location is attempted:
+ * $HOME/.ccnx/.ccnx_keystore with a passphrase of passw0rd [that is a zero, not an o]
+ *
+ * \return 0 on success, -1 otherwise
+ */
 
 int
 loadKey( struct ccn *ccn, struct ccn_signing_params *sp ) {
@@ -75,6 +107,18 @@ loadKey( struct ccn *ccn, struct ccn_signing_params *sp ) {
 	return rc;
 }
 
+/**
+ * Locate and load a client's security keys; this may be deprecated
+ *
+ * A check is made to see if the user has set their environment variable indicating
+ * the keystore file that should be used for this process. The passphrase is also
+ * an environment variable.
+ *
+ * If the environment variable is not set, a default location is attempted:
+ * $HOME/.ccnx/.ccnx_keystore with a passphrase of passw0rd [that is a zero, not an o]
+ *
+ * \return a populated structure with the keys loaded into it
+ */
 struct ccn_keystore*
 fetchStore() {
 	char* str;
@@ -109,6 +153,13 @@ fetchStore() {
 	return ans;
 }
 
+/**
+ * Creates a key locator portion of an interest
+ * [ \todo or is that for published content?]
+ *
+ * \param key		pointer to the key structure
+ * \return character buffer encoded with the \<KEYLOCATOR\> \<KEY>pkey</KEY\> \</KEYLOCATOR\>
+ */
 struct ccn_charbuf*
 makeLocator( const struct ccn_pkey* key ) {
 	int rc;
@@ -127,11 +178,16 @@ makeLocator( const struct ccn_pkey* key ) {
 	return ans;
 }
 
-/*
- * Look at an upcall_info and reassemble an interest into a URI looking thing.
- * We put everything into a charbuf, letting the caller release the buffer when done.
- */
  
+/**
+ * Create a charbuf containing the interest, making it look like a URI
+ *
+ * An example of the kind of URI we expect is: /test/part2/details/person.
+ * We make no claim as to the validity of this format.
+ *
+ * \param info		Structure holding the components to be assembled
+ * \return character buffer with the URI string in it; the caller is responsible for destroying it when done
+ */
 struct ccn_charbuf*
 interestAsUri( const struct ccn_upcall_info * info ) {
   struct ccn_charbuf* cb;
@@ -155,12 +211,40 @@ interestAsUri( const struct ccn_upcall_info * info ) {
   return cb;
 }
 
-
-/*
- * Dump routines. We can dump out a piece of memory in either hex or octal format.
+/**
+ * Function to sleep for a specified number of milli-seconds
+ *
+ * \param msecs		number of msecs to sleep
  */
- 
 void
+msleep( int msecs ) {
+  struct timespec tv, rm;
+  tv.tv_sec = 0;
+  while( msecs > 999 ) {
+    tv.tv_sec++;
+    msecs -= 1000;
+  }
+  tv.tv_nsec = msecs * 1000000;
+  nanosleep( &tv, &rm );
+}
+
+/**
+ * Common routine for dumping out octal or hex
+ *
+ * Very little is different about dumping out memory with different number bases. Those
+ * few things that are different can be sent in as paramaters as they are here.
+ * 
+ * The address we print is actually rounded down so that it ends in a nice value, like '0'.
+ * This actually makes looking for data easier since the math is easier when you have a nice
+ * value such as this.
+ *
+ * \param ptr		points to the memory to be dumped
+ * \param size		number of bytes to dump
+ * \param addrFmt	the printf format string to use in creating the address output
+ * \param byteFmt	the printf format string used in creating the data for output
+ * \param pad		the printf format string used in padding output for non-displayed memory
+ */
+static void
 commonDump( const DumpAddr_t ptr, const DumpSize_t size, char* addrFmt, char* byteFmt, char* pad ) {
   DumpAddr_t cp = ptr;
   int sz = 0;
@@ -218,16 +302,100 @@ commonDump( const DumpAddr_t ptr, const DumpSize_t size, char* addrFmt, char* by
   }
 }
 
+/**
+ * Octal dump routine.
+ *
+ * The output is of general form:
+ * \code
+ * Address   word  word  word  word  <ASCII representation>
+ * \endcode
+ * <table>
+ * <tr>
+ *   <td>Address</td>
+ *	 <td>
+ *	 octal format of the addresses being dumped.
+ *   The values are rounded down so the addresses look nicer.
+ *   This means that the first line may skip some of the bytes to dump because
+ *   they are before the requested address.
+ *	 </td>
+ * </tr>
+ * <tr>
+ *	 <td>word</td>
+ *	 <td>
+ *	 contains 4 bytes [ok, I'm on a 32 bit machine].
+ *	 This too is in octal.
+ *	 </td>
+ * </tr>
+ * <tr>
+ *	 <td>ASCII</td>
+ *	 <td>
+ *	 Prints the character if it makes sense to.
+ *	 If no printable ASCII exists for a byte, a '.' appears in that spot.
+ *	 Don't be fooled by printing a period vs. an unprintable character.
+ *	 </td>
+ * </tr>
+ * </table>
+ *
+ * \param ptr		points to the memory to be dumped
+ * \param size		the number of bytes to dump
+ */
+
 void
 oDump( const DumpAddr_t ptr, const DumpSize_t size ) {
   commonDump( ptr, size, "%011o  ", "%03o", "%3s" );
 }
-
+/**
+ * Hex dump routine.
+ *
+ * The output is of general form:
+ * \code
+ * Address   word  word  word  word  <ASCII representation>
+ * \endcode
+ * <table>
+ * <tr>
+ *   <td>Address</td>
+ *	 <td>
+ *	 hex format of the addresses being dumped.
+ *   The values are rounded down so the addresses look nicer.
+ *   This means that the first line may skip some of the bytes to dump because
+ *   they are before the requested address.
+ *	 </td>
+ * </tr>
+ * <tr>
+ *	 <td>word</td>
+ *	 <td>
+ *	 contains 4 bytes [ok, I'm on a 32 bit machine].
+ *	 This too is in hex.
+ *	 </td>
+ * </tr>
+ * <tr>
+ *	 <td>ASCII</td>
+ *	 <td>
+ *	 Prints the character if it makes sense to.
+ *	 If no printable ASCII exists for a byte, a '.' appears in that spot.
+ *	 Don't be fooled by printing a period vs. an unprintable character.
+ *	 </td>
+ * </tr>
+ * </table>
+ *
+ * \param ptr		points to the memory to be dumped
+ * \param size		the number of bytes to dump
+ */
 void
 hDump( const DumpAddr_t ptr, const DumpSize_t size ) {
   commonDump( ptr, size, "%08X  ", "%02X", "%2s" );
 }
 
+/**
+ * Dump out components
+ *
+ * Dump out components of a name.
+ * Given the buffer holding the name, and the number of components to dump out,
+ * we parse the name and send dumped output to stderr.
+ *
+ * \param cbuf		character buffer holding the name
+ * \param todo		number of components to dump out
+ */
 void
 compDump(struct ccn_charbuf *cbuf, int todo) {
   int rc;
@@ -251,12 +419,22 @@ compDump(struct ccn_charbuf *cbuf, int todo) {
 }
 
 
-/*
- * Compare stuff.
- * If i is >0, only i positions are checked.
- * Returns:
- * -1    :: the two are equivalent
- * n    :: they differ at position n, starting position is 0
+/**
+ * Compare stuff being held in two character arrays and index buffers
+ *
+ * The character arrays are parts of character buffers. They do not represent
+ * strings in the strict sense; they may contain binary data and include
+ * null characters. The index information stipulates where the data really is
+ * and how large it is.
+ *
+ * \param data1		pointer to the first character array
+ * \param indexbuf1	index buffer into the first characgter array
+ * \param data2		pointer to the second character array
+ * \param indexbuf2	index buffer into the second character array
+ * \param i			if >0, only i positions are checked
+ * \return at which component they differ
+ * \retval -1	the two are equivalent
+ * \retval n	the two differ at position n, starting position is 0
  */
 int
 name_compare(const unsigned char *data1,

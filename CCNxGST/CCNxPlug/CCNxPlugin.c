@@ -1,5 +1,9 @@
-// TestPlug.cpp : Defines the exported functions for the DLL application.
-//
+/** \file CCNxPlugin.c
+ * \brief Implements the GStreamer entry point for the shared library plug-in
+ *
+ * \date Created Nov, 2009
+ * \author John Letourneau <topgun@bell-labs.com>
+ */
 
 #include "stdafx.h"
 #include "CCNxPlugin.h"
@@ -33,31 +37,31 @@
 #  include "config.h"
 #endif
 
+#include "ccnxsrc.h"
+#include "ccnxsink.h"
+
+#ifdef WIN32
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-
-/** TODO: These headers should match those for each of the elements */
-#include "ccnxsrc.h"
-#include "ccnxsink.h"
-
+/**
+ * Helps with Windows compatibility
+ */
 unsigned int  _get_output_format(void) { return 0; }
-/*
-TESTPLUG_API
-int _getaddrinfo(const char* host, const char* port, const struct addrinfo *hints, struct addrinfo **res) {
-      /* return getaddrinfo( host, port, hints, res );
-	return 0;
-}
-*/
-/* entry point to initialize the plug-in
- * initialize the plug-in itself
- * register the element factories and other features
+
+#endif
+
+
+/**
+ * Entry point to initialize the plug-in
+ *
+ * Initialize the plug-in itself,
+ * and register the element factories.
  */
 gboolean
 plug_init (GstPlugin * ccnx)
 {
-	fprintf( stderr, "I am in plug-init\n" );
   if( ! gst_element_register (ccnx, "ccnxsrc", GST_RANK_NONE,
       GST_TYPE_CCNXSRC) ) return FALSE;
   if( ! gst_element_register (ccnx, "ccnxsink", GST_RANK_NONE,
@@ -67,28 +71,94 @@ plug_init (GstPlugin * ccnx)
 }
 
 
-/* PACKAGE: this is usually set by autotools depending on some _INIT macro
+#ifndef PACKAGE
+
+/**
+ * Identifies the name of the package
+ *
+ * This is usually set by autotools depending on some _INIT macro
  * in configure.ac and then written into and defined in config.h, but we can
  * just set it ourselves here in case someone doesn't use autotools to
  * compile this code. GST_PLUGIN_DEFINE needs PACKAGE to be defined.
  */
-#ifndef PACKAGE
-#define PACKAGE "testplugin"
-#define VERSION "1.0"
+#define PACKAGE "CCNxPlugin"
+
+/**
+ * Identifies the version of the package
+ *
+ * This is usually set by autotools depending on some _INIT macro
+ * in configure.ac and then written into and defined in config.h, but we can
+ * just set it ourselves here in case someone doesn't use autotools to
+ * compile this code. GST_PLUGIN_DEFINE needs PACKAGE to be defined.
+ */
+#define VERSION "0.1"
 #endif
 
-/* gstreamer looks for this structure to register plug-in elements
+/**
+ * Structure used by the  GStreamer framework to register plug-in elements
  *
  */
 
 GST_PLUGIN_DEFINE (
     GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "testplug",
-    "Interface data content to-from a TEST CCNx network",
+    PACKAGE,
+    "Interface data content to-from a CCNx network",
     plug_init,
     VERSION,
     "LGPL",
     "I@D",
     "http://bell-labs.com/"
 )
+
+
+/**
+ * \date Created: Nov, 2009
+ * \author John Letourneau <topgun@bell-labs.com>
+ *
+ * \mainpage Content Centric Network GStreamer Plug-in
+ *
+ * This plug-in's entry point is implemented in CCNxPlugin.c
+ *
+ * The
+ * <a href="http://www.ccnx.org">Content Centric Network Project</a> <b>[CCN or CCNx]</b>
+ * is an effort by a group at Xerox PARC to redefine
+ * how the internet is used; to a level of changing the content and how it is requested.
+ *
+ * <a href="http://www.gstreamer.net">GStreamer</a> <b>[GST]</b>
+ * is a framwork that allows for a simplified means of defining media processing pipelines.
+ *
+ * Our effort here is to marry these two together into a GST plug-in that allows for a media pipeline
+ * to read its source from, or provide its content to a CCNx style network.
+ * There are two elements that have been implemented: ccnxsrc and ccnxsink.
+ *
+ * The ccnxsink GStreamer element is responsible for consuming packets from
+ * a GST pipeline and delivering to them onto a CCNx network
+ * for consumption by other clients wanting to read such published data;
+ * via the partner element, ccnxsrc.
+ * Both of these elements take an attribute, \em uri, which is used to name the
+ * content; one while being published, the other to signify what content the
+ * client is interested in receiving.
+ * The protocol specified for the uri is specific to this kind of network:
+ * \code
+ * [more information on naming can be found at \ref SINKCCNNAMING ]
+ *
+ * ccnx://a/path/naming/the/content/from/global/to/more/specific
+ * \endcode
+ * These elemnts operate in a very simple manner:
+ * read data, packatize as appropriate, send data.
+ * The packet or message size for the network is different than that of the pipeline;
+ * althought each can vary according to the application, in our case we have
+ * configured each as being different from the other.
+ *
+ * This is the product of a research project.
+ * As such there are potentially faults and pitfalls within the code,
+ * in particular areas dealing with error processing.
+ * It is often the case that client process failure is seen as an acceptable
+ * means of reacting to an error condition,
+ * thus it may not be acceptable to use this code in a production environment.
+ *
+ * More details on the lower level designs can be found at:
+ * \li \subpage CCNSRCDESIGN
+ * \li \subpage CCNSINKDESIGN
+ */

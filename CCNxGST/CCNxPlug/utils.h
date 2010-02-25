@@ -1,3 +1,8 @@
+/** \file utils.h
+
+\brief Contains a set of utility functions
+
+*/
 /*
  * GStreamer, CCNx Plug-in
  * Copyright (C) 2009 John Letourneau <topgun@bell-labs.com>
@@ -30,6 +35,10 @@
 #include <ccn/signing.h>
 #include <stdlib.h>
 
+#define CCND_HOST_ENV_VAR		"CCND_HOST"         /**< Environment variable storing the location of the ccnd router machine */
+#define CCN_KEYSTORE_ENV_VAR	"CCN_KEYSTORE"      /**< Environment variable storing the location of the user's key store file */
+#define CCN_PASSPHRASE_ENV_VAR	"CCN_PASSPHRASE"    /**< Environment variable storing the passphrase for the user's key store file */
+
 /*
  * Gets the host where we can find the ccnd router process.
  * If none has been configured, a null is returned.
@@ -38,9 +47,6 @@
  * has a #define CCN_LOCAL_PORT_ENVNAME "CCN_LOCAL_PORT". The default if not set is
  * #define CCN_DEFAULT_UNICAST_PORT "9695" as of this writing. See ccn/ccnd.h.
  */
-#define CCND_HOST_ENV_VAR		"CCND_HOST"
-#define CCN_KEYSTORE_ENV_VAR	"CCN_KEYSTORE"
-#define CCN_PASSPHRASE_ENV_VAR	"CCN_PASSPHRASE"
 
 char* ccndHost();
 
@@ -57,27 +63,33 @@ struct ccn_charbuf* makeLocator( const struct ccn_pkey* key );
  */
 struct ccn_charbuf* interestAsUri( const struct ccn_upcall_info * info );
 
+/*
+ * Snooze for a while
+ */
+void msleep( int msecs );
 
 /*
  * Dump routines.
- * The output is of general form:
- *
- * Address   word  word  word  word  <ASCII representation>
- *
- * Address octal or hex format of the addresses being dumped.
- * The values are rounded down so the addresses look nicer.
- * This means that the first line may skip some of the bytes to dump because
- * they are before the requested address.
- *
- * Each 'word' contains 4 bytes [ok, I'm on a 32 bit machine].
- *
- * If no printable ASCII exists for a byte, a '.' appears in that spot.
  */
  
+/**
+ * Used to cast onto the oDump() and hDump() API
+ */
 typedef unsigned char* DumpAddr_t;
+
+/**
+ * Used to cast onto the oDump() and hDump() API
+ */
 typedef int DumpSize_t;
 
+/**
+ * Used to cast onto the oDump() and hDump() API
+ */
 #define DUMP_ADDR(addr) (const DumpAddr_t)(addr)
+
+/**
+ * Used to cast onto the oDump() and hDump() API
+ */
 #define DUMP_SIZE(sz)   (const DumpSize_t)(sz)
 
 /*
