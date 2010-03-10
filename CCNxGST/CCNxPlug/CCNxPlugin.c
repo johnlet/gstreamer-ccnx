@@ -4,15 +4,15 @@
  * \date Created Nov, 2009
  * \author John Letourneau <topgun@bell-labs.com>
  */
-
-#include "stdafx.h"
-#include "CCNxPlugin.h"
-
-
 /*
- * CCNx Plug-in
- * Copyright (C) 2010 John Letourneau <topgun@bell-labs.com>
- * 
+ * GStreamer-CCNx, CCNx plug-in
+ * Copyright (C) 2009 Alcatel-Lucent Inc, and John Letourneau <topgun@bell-labs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation;
+ * version 2 of the License.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -31,7 +31,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
+ * You should have received a copy of the GNU Library General Public
+ * License, License.txt, along with this library; if not, write to the Free
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  */
+
+#include "stdafx.h"
+#include "CCNxPlugin.h"
 
 #ifdef HAVE_CONFIG_H
 #  include "config.h"

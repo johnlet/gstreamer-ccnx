@@ -4,11 +4,15 @@
  * \author John Letourneau <topgun@bell-labs.com>
  * \date Created: Nov, 2009
  */
- 
 /*
- * GStreamer, CCNx source element
- * Copyright (C) 2009 John Letourneau <topgun@bell-labs.com>
- * 
+ * GStreamer-CCNx, interface GStreamer media flow with a CCNx network
+ * Copyright (C) 2009 Alcatel-Lucent Inc, and John Letourneau <topgun@bell-labs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation;
+ * version 2 of the License.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -26,6 +30,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License, License.txt, along with this library; if not, write to the Free
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
 
