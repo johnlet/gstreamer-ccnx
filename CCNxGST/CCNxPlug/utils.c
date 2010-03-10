@@ -418,6 +418,67 @@ compDump(struct ccn_charbuf *cbuf, int todo) {
   ccn_indexbuf_destroy(&comps);
 }
 
+uintmax_t ccn_ccnb_fetch_segment( const unsigned char* buf, const struct ccn_indexbuf* idx) {
+  const unsigned char *cp;
+  size_t sz;
+  uintmax_t ans = 0;
+  int i;
+  if( 0 > ccn_name_comp_get( buf, idx, idx->n-2, &cp, &sz ) )
+    return -1;
+  for( i=1; i<sz; ++i ) ans = (ans<<8) + cp[i]; // skip first byte; marker
+  return ans;
+}
+
+uintmax_t
+ccn_charbuf_fetch_segment(const struct ccn_charbuf *name) {
+    struct ccn_indexbuf *nix = ccn_indexbuf_create();
+    int n = ccn_name_split(name, nix);
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    size_t lc;
+    size_t oc;
+    int size;
+    const unsigned char *comp;
+
+    if(n >= 1) {
+      oc = nix->buf[n-1];
+      lc = nix->buf[n] - oc;
+      d = ccn_buf_decoder_start(&decoder, name->buf + oc, lc);
+      if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+	      ccn_buf_advance(d);
+	      if (ccn_buf_match_blob(d, &comp, &size)) {
+	        uintmax_t ans = 0;
+	        int i;
+	        for( i=1; i<size; ++i ) ans = (ans<<8) + comp[i]; // skip first byte; marker
+	        return ans;
+	      }
+      }
+    }
+    return -1;
+}
+
+void
+show_comps( const unsigned char* buf, const struct ccn_indexbuf* idx ) {
+    int i;
+    int end;
+    
+    if( ! idx ) return;
+    if( ! buf ) return;
+    
+    end = idx->n - 1; /* always skip the trailing %00 tag */
+    
+    for( i=0; i<end; ++i ) {
+      const unsigned char *cp;
+      size_t sz;
+      fprintf(stderr, "%3d: ", i);
+      if( 0 > ccn_name_comp_get( buf, idx, i, &cp, &sz ) )
+        fprintf(stderr, "could not get comp\n");
+      else
+        ccn_hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
+    }
+
+}
+
 
 /**
  * Compare stuff being held in two character arrays and index buffers

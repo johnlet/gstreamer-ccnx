@@ -64,18 +64,26 @@ GST_DEBUG_CATEGORY_STATIC (gst_ccnxsrc_debug);
  * Size of the CCN network blocks...sort of
  */
 #define CCN_CHUNK_SIZE 4000
+
+/**
+ * Size of the CCN window of outstanding interests
+ */
+#define CCN_WINDOW_SIZE 5
+
 /**
  * Size of a FIFO block
  */
 #define CCN_FIFO_BLOCK_SIZE (CCN_CHUNK_SIZE)
+
 /**
  * Number of msecs prior to a get version() timeout
  */
-#define CCN_VERSION_TIMEOUT 400
+#define CCN_VERSION_TIMEOUT 2000
+
 /**
- * I forget what this timeout is for
+ * Number of msecs we wait to acquire the streams meta information
  */
-#define CCN_HEADER_TIMEOUT 400
+#define CCN_HEADER_TIMEOUT 2000
 
 
 /**
@@ -93,9 +101,9 @@ enum
  */
 enum
 {
-  PROP_0
-  , PROP_URI
-  , PROP_SILENT
+  PROP_0			/**< Invalid property */
+  , PROP_URI		/**< URI property */
+  , PROP_SILENT		/**< Silent operation property */
 };
 
 /**
@@ -287,6 +295,7 @@ static void
 gst_ccnxsrc_init (Gstccnxsrc * me,
     GstccnxsrcClass * gclass)
 {
+	gint i;
 
   me->srcpad = gst_pad_new_from_static_template (&src_factory, "src");
   gst_pad_set_getcaps_function (me->srcpad,
@@ -298,6 +307,9 @@ gst_ccnxsrc_init (Gstccnxsrc * me,
   me->uri = g_strdup(CCNX_DEFAULT_URI);
   me->fifo_head = 0;
   me->fifo_tail = 0;
+  me->intWindow = 0;
+  me->intStates = calloc( CCN_WINDOW_SIZE, sizeof(CcnxInterestState) ); /* init the array of outstanding states */
+  for( i=0; i<CCN_WINDOW_SIZE; ++i ) me->intStates[i].state = OInterest_idle;
   me->i_pos = 0;
   me->i_bufoffset = 0;
   me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
@@ -485,6 +497,153 @@ sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
 }
 
 /**
+ * Looks for an idle slot in the array
+ *
+ * This looks through the array of states to find an idle slot. We do a straight loop
+ * search as we don't expect this list to be very long.
+ *
+ * \param me		source context where the array is located
+ * \return pointer to the available state slot, NULL if none found
+ */
+CcnxInterestState*
+allocInterestState( Gstccnxsrc* me ) {
+	CcnxInterestState* ans = NULL;
+	gint i;
+
+	if( NULL == me ) return ans;
+
+	for( i=0; i<CCN_WINDOW_SIZE; ++i ) {
+		if( OInterest_idle == me->intStates[i].state ) {
+			ans = &(me->intStates[i]);
+			ans->data = NULL;
+			ans->seg = -1;
+			ans->size = 0;
+			ans->timeouts = 0;
+			ans->lastBlock = FALSE;
+			me->intWindow++;
+			break;
+		}
+	}
+	return ans;
+}
+
+/**
+ * Frees a state slot for other interest to use
+ *
+ * Not too difficult...clean up any possible data pointers and
+ * set the state to idle.
+ *
+ * \param me		context holding the array of states
+ * \param is		state slot to be released
+ */
+void
+freeInterestState( Gstccnxsrc *me, CcnxInterestState* is ) {
+	if( NULL == me || NULL == is ) return;
+	/* free buffers, potentially */
+	if( is->data ) free( is->data );
+	is->size = 0;
+	is->seg = -1;
+	is->state = OInterest_idle;
+	me->intWindow--;
+}
+
+/**
+ * Looks for a specific segments interests state
+ *
+ * We look through the list of states to find the requested segment.
+ *
+ * \param me		context holding the array of states
+ * \param seg		segment number to find
+ * \return pointer to the state entry holding that segment, NULL if not found
+ */
+CcnxInterestState*
+fetchSegmentInterest( Gstccnxsrc* me, gulong seg ) {
+	gint i;
+
+	if( NULL == me ) return NULL;
+
+	for( i=0; i<CCN_WINDOW_SIZE; ++i )
+		if( seg == me->intStates[i].seg && OInterest_idle != me->intStates[i].state ) return &(me->intStates[i]);
+	return NULL;
+}
+
+/**
+ * Looks for a segment, or its best successor
+ *
+ * Sometimes we may not be able to get all the segments from a source.
+ * This may be OK for some kinds of streamed media: voice, video, ...
+ * When this happens, we need a way to know the difference between 'still waiting'
+ * and 'timeout, can the request' activity for a segment. So, when we want access
+ * to segment \b N, we may need to settle for \b N+m because everything from
+ * <b>[N, N+m) </b> has timed out or is not available. This is the method that
+ * has this behavior.
+ *
+ * \param me		context holding the array of interest states
+ * \param seg		segment number we desire
+ * \return pointer to the state entry holding the best segment we could find
+ * \retval seg	if we could actually match the segment
+ * \retval N>seg	if a gap exists between what was asked for and what we have
+ */
+CcnxInterestState*
+nextSegmentInterest( Gstccnxsrc* me, gulong seg ) {
+	gint				i;
+	gulong				best;
+	CcnxInterestState	*ans = NULL;
+
+	if( NULL == me ) return NULL;
+
+	best = 0;
+	best--;
+	for( i=0; i<CCN_WINDOW_SIZE; ++i ) {
+		if( OInterest_idle != me->intStates[i].state ) {
+			if( seg == me->intStates[i].seg ) return &(me->intStates[i]);
+			if( best > me->intStates[i].seg ) {
+				ans = &(me->intStates[i]);
+				best = ans->seg;
+			}
+		}
+	}
+	return ans;
+}
+
+/**
+ * Post an interests to the CCN network, and maintains the state information
+ *
+ * This will create the name used to express the interest on the network. It takes
+ * the given segment and includes it in the name. It will then manage the state information
+ * we keep in the context to allow us to deliver segments in order, as oppose to how
+ * they may be presented to us from the network.
+ *
+ * \param me		context holding the array of interest states and other ccn information
+ * \param seg		the segment to express interest in
+ * \return status value from the express call made to CCN
+ */
+gint
+request_segment( Gstccnxsrc* me, long seg ) {
+  struct ccn_charbuf *nm = NULL;
+  gint rc;
+
+  if( NULL == me ) return -1;
+
+  // nm = sequenced_name(me->p_name, seg);
+  nm = ccn_charbuf_create();
+  rc |= ccn_charbuf_append_charbuf(nm, me->p_name);
+  rc |= ccn_name_append_numeric(nm, CCN_MARKER_SEQNUM, seg);
+  
+  GST_INFO ("reqseg - name for interest...");
+  hDump(nm->buf, nm->length);
+  rc |= ccn_express_interest(me->ccn, nm, me->ccn_closure,
+                               me->p_template);
+  ccn_charbuf_destroy(&nm);
+  if( rc < 0 ) {
+    return rc;
+  }
+
+  GST_DEBUG ("interest sent for segment %d\n", seg);
+  return rc;
+}
+
+/**
  * test to see if a fifo queue is empty
  *
  * \param me	element context where the fifo is kept
@@ -666,15 +825,17 @@ get_segment(struct ccn *h, struct ccn_charbuf *name, int timeout)
 {
     struct ccn_charbuf *hn;
     long *result = NULL;
-    int res;
+    int res = 0;
 
   GST_INFO ("get_segment step 1");
     hn = ccn_charbuf_create();
+	// ccn_name_append_components(hn, name->buf, 0, name->length );
     ccn_charbuf_append_charbuf(hn, name);
-    ccn_name_append_str(hn, "_meta_");
-    ccn_name_append_str(hn, ".segment");
+	ccn_name_from_uri(hn, "_meta_/.segment");
+    // ccn_name_append_str(hn, "_meta_");
+    // ccn_name_append_str(hn, ".segment");
   GST_INFO ("get_segment step 2");
-    res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
+    // res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
   GST_INFO ("get_segment step 3, res: %d", res);
     if (res == 0) {
         struct ccn_charbuf *ho = ccn_charbuf_create();
@@ -682,10 +843,11 @@ get_segment(struct ccn *h, struct ccn_charbuf *name, int timeout)
         const unsigned char *hc;
         size_t hcs;
 
+        hDump(DUMP_ADDR(hn->buf), DUMP_SIZE(hn->length));
   GST_INFO ("get_segment step 10");
         res = ccn_get(h, hn, NULL, timeout, ho, &pcobuf, NULL, 0);
   GST_INFO ("get_segment step 11, res: %d", res);
-        if (res == 0) {
+        if (res >= 0) {
             hc = ho->buf;
             hcs = ho->length;
             hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
@@ -724,10 +886,11 @@ static gboolean
 gst_ccnxsrc_start (GstBaseSrc * bsrc)
 {
   Gstccnxsrc *src;
+  CcnxInterestState *istate;
 
   struct ccn_charbuf *p_name = NULL;
-  long *p_seg = NULL;
-  int i_ret = 0;
+  gulong *p_seg = NULL;
+  gint i_ret = 0;
   gboolean b_ret = FALSE;
 
   src = GST_CCNXSRC (bsrc);
@@ -753,7 +916,6 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
   /* We setup the closure to keep our context [src] and to call the incoming_content() function */
   src->ccn_closure->data = src;
   src->ccn_closure->p = incoming_content;
-  src->timeouts = 0;
 
   /* Allocate buffers and construct the name from the uri the user gave us */
   GST_INFO ("step 1");
@@ -771,15 +933,15 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
   }
 
   /* Find out what the latest one of these is called, and keep it in our context */
-  i_ret = ccn_resolve_version(src->ccn, p_name, CCN_V_HIGHEST,
+  ccn_charbuf_append(src->p_name, p_name->buf, p_name->length);
+  i_ret = ccn_resolve_version(src->ccn, src->p_name, CCN_V_HIGHEST,
                                 CCN_VERSION_TIMEOUT);
-  ccn_charbuf_append_charbuf(src->p_name, p_name);
 
   GST_INFO ("step 20 - name so far...");
   hDump(src->p_name->buf, src->p_name->length);
   src->i_seg = 0;
   if (i_ret == 0) { /* name is versioned, so get the meta data to obtain the length */
-    p_seg = get_segment(src->ccn, p_name, CCN_HEADER_TIMEOUT);
+    p_seg = get_segment(src->ccn, src->p_name, CCN_HEADER_TIMEOUT);
     if (p_seg != NULL) {
         src->i_seg = *p_seg;
         GST_INFO("step 25 - next seg: %d", src->i_seg);
@@ -791,19 +953,19 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
   /* Even though the recent segment published is likely to be >> 0, we still need to ask for segment 0 */
   /* because it seems to contain valuable stream information. Attempts to skip segment 0 resulted in no */
   /* proper rendering of the stream on my screen during testing */
-  p_name = sequenced_name(src->p_name, 0);
-  
-  GST_INFO ("step 30 - name for interest...");
-  hDump(p_name->buf, p_name->length);
-  i_ret = ccn_express_interest(src->ccn, p_name, src->ccn_closure,
-                               src->p_template);
-  ccn_charbuf_destroy(&p_name);
+  i_ret = request_segment( src, 0 );
   if( i_ret < 0 ) {
     GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("interest sending failed"));
     return FALSE;
   }
-
-  GST_DEBUG ("interest sent for segment 0");
+  src->post_seg = 0;
+  istate = allocInterestState( src );
+  if( ! istate ) { // This should not happen, but maybe
+	GST_ELEMENT_ERROR(src, RESOURCE, READ, NULL, ("trouble allocating interest state structure"));
+	return FALSE;
+  }
+  istate->seg = 0;
+  istate->state = OInterest_waiting;
 
   /* Now start up the background work which will fetch all the rest of the R/T segments */
   eventTask = gst_task_create( ccn_event_thread, src );
@@ -889,6 +1051,166 @@ gst_ccnxsrc_unlock_stop (GstBaseSrc * bsrc)
 }
 
 /**
+ * Moves the data into an internal buffer and sends it out on the fifo queue
+ *
+ * Here we deal with the difference in buffer sizes between what comes in from the
+ * network, and what we use internally on the gst pipeline [via the fifo queue].
+ * We keep track of space available, and partially filled buffers as needed.
+ *
+ * \param me		source context for the bytes coming in to this element
+ * \param data		pointer to the new buffer of data
+ * \param data_size	number of bytes to transfer
+ * \param b_last	flag telling us that this is the last block of data
+ */
+static void
+process_segment( Gstccnxsrc *me, const guchar* data, const size_t data_size, const gboolean b_last ) {
+    size_t start_offset = 0;
+
+    if (data_size > 0) {
+        start_offset = me->i_pos % CCN_CHUNK_SIZE;
+        if (start_offset > data_size) {
+            GST_LOG_OBJECT(me, "start_offset %zu > data_size %zu", start_offset, data_size);
+        } else {
+            if ((data_size - start_offset) + me->i_bufoffset > CCN_FIFO_BLOCK_SIZE) {
+                /* won't fit in buffer, release the buffer upstream via the fifo queue */
+  GST_DEBUG ("pushing data");
+                GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
+				fifo_put(me, me->buf);
+                me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
+                me->i_bufoffset = 0;
+            }
+            /* will fit in buffer */
+            memcpy( GST_BUFFER_DATA(me->buf) + me->i_bufoffset, data + start_offset, data_size - start_offset);
+            me->i_bufoffset += (data_size - start_offset);
+        }
+    }
+
+    /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
+     * and don't express an interest
+     */
+    if (b_last) {
+  GST_DEBUG ("handling last block");
+        if (me->i_bufoffset > 0) { // flush out any last bits we had
+            GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
+            fifo_put(me, me->buf);
+            me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
+            me->i_bufoffset = 0;
+        }
+/*
+ * \todo should emit an eos here instead of the empty buffer
+ */
+        GST_BUFFER_SIZE(me->buf) = 0;
+        fifo_put(me, me->buf);
+        me->i_bufoffset = 0;
+	}
+}
+
+/**
+ * Checks to see if the new data is the next we expect to use
+ *
+ * When several interests are outstanding at the same time, it is possible that
+ * the data for each arrives in a different order than one might expect. This is
+ * more true in a widely distributed environment where more than one source of the
+ * data exists to satisfy the request. And so we must be prepared for getting the
+ * data out of order, and re-aligning it as necessary.
+ *
+ * Our context keep track of what it expects to post to the pipeline buffers next
+ * with the post_seg attribute. If we do not get this segment next, we copy the data
+ * over to our own buffer [I think we only borrow the one on input], and mark the
+ * interest array in a fashion that shows we have the data.
+ *
+ * If we do match the next segment, then we would process that data, making it
+ * available for the pipeline. We then continue looking for the other segments
+ * that may have arrived ahead of 'schedule'. Care is taken to skip segments
+ * that have for some reason been dropped; likely excessive time outs.
+ *
+ * \todo at this time I have yet to test the out-of-order code...creating a test for
+ * this would take some time because the producer needs to be savy to it.
+ *
+ * \param me		source context for the gst element controlling this data
+ * \param segment	number of the segment that this data is for
+ * \param data		pointer into the data buffer
+ * \param data_size	how many bytes we are to use
+ * \param b_last	flag telling us this is the last block of data; which can still arrive out of order of course
+ */
+static void
+process_or_queue( Gstccnxsrc *me, const gulong segment, const guchar* data, const size_t data_size, const gboolean b_last ) {
+	CcnxInterestState *istate = NULL;
+	
+	istate = fetchSegmentInterest( me, segment );
+	if( NULL == istate ) {
+		GST_INFO("failed to find segment in interest array: %d", segment);
+		return;
+	}
+	istate->state = OInterest_havedata;
+
+	if( me->post_seg == segment ) { // This is the next segment we need
+		GST_INFO("porq - got the segment we need: %d", segment );
+		process_segment( me, data, data_size, b_last );
+		freeInterestState( me, istate );
+		if( 0 == segment ) me->post_seg = me->i_seg; // special case for segment zero
+		else me->post_seg++;
+
+		/* Also look to see if other segments have arrived earlier that need to be posted */
+		istate = nextSegmentInterest( me, me->post_seg );
+		while( istate && OInterest_havedata == istate->state ) {
+			GST_INFO("porq - also processing extra segment: %d", istate->seg );
+			process_segment( me, istate->data, istate->size, istate->lastBlock );
+			me->post_seg = 1 + istate->seg; // because we may skip some data, we use this segment to key off of
+			freeInterestState( me, istate );
+			istate = nextSegmentInterest( me, me->post_seg );
+		}
+	} else if(me->post_seg > segment) { // this one is arriving very late, throw it out
+		freeInterestState( me, istate );
+	} else { // This segment needs to await processing in the queue
+		GST_INFO("porq - segment needs to wait: %d", segment );
+		istate->size = data_size;
+		istate->lastBlock = b_last;
+		istate->data = calloc( 1, data_size ); // We need to copy it to our own buffer
+		memcpy( istate->data, data, data_size );
+	}
+}
+
+/**
+ * Sends out interests to keep the outstanding window \b full
+ *
+ * We desire to keep a specific number of outstanding interest
+ * request. This window of looking ahead is meant to help with
+ * response times for the data; in particular when it is R/T critical.
+ * Some aspects of response we cannot improve upon; it takes light
+ * [electricity] a certain number of msecs to get from Qindao to Murray Hill.
+ * However being tardy with asking for data is completely within
+ * our control.
+ *
+ * \param me		source context holding the state for this element instance
+ */
+static enum ccn_upcall_res
+post_next_interest( Gstccnxsrc *me ) {
+	CcnxInterestState	*is;
+	gint				res;
+	gulong				segment;
+
+	while( me->intWindow < CCN_WINDOW_SIZE ) {
+		/* Ask for the next segment from the producer */
+		me->i_pos = CCN_CHUNK_SIZE * (1 + (me->i_pos / CCN_CHUNK_SIZE));
+		segment = me->i_seg++;
+		res = request_segment(me, segment );
+		if (res < 0) {
+			GST_LOG_OBJECT(me, "trouble sending the next interests");
+			return (CCN_UPCALL_RESULT_ERR);
+		}
+		is = allocInterestState( me );
+		if( ! is ) { // This should not happen, but maybe
+			GST_LOG_OBJECT(me, "trouble allocating interest state structure");
+			return (CCN_UPCALL_RESULT_ERR);
+		}
+		is->seg = segment;
+		is->state = OInterest_waiting;
+	}
+	return CCN_UPCALL_RESULT_OK;
+}
+
+/**
  * Main working loop for stuff coming in from the CCNx network
  *
  * The only kind of content we work with are data messages. They are in response to the
@@ -919,21 +1241,25 @@ incoming_content(struct ccn_closure *selfp,
 
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
-    int64_t start_offset = 0;
     struct ccn_charbuf *name = NULL;
     const unsigned char *ib = NULL; /* info->interest_ccnb */
     struct ccn_indexbuf *ic = NULL;
-    int i;
-    int res;
+    gint i;
+	gulong segment;
+	CcnxInterestState *istate = NULL;
+    gint res;
+	const unsigned char *cp;
+	size_t sz;
     const unsigned char *data = NULL;
     size_t data_size = 0;
     gboolean b_last = FALSE;
+	const unsigned char buff[1024];
 
   GST_INFO ("content has arrived!");
  
   /* Do some basic sanity and type checks to see if we want to process this data */
-    switch (kind) {
-    case CCN_UPCALL_FINAL:
+    
+  if( CCN_UPCALL_FINAL == kind ) {
         GST_LOG_OBJECT(me, "CCN upcall final %p", selfp);
         if (me->i_bufoffset > 0) {
             GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
@@ -948,35 +1274,56 @@ incoming_content(struct ccn_closure *selfp,
         fifo_put(me, me->buf);
         me->i_bufoffset = 0;
         return (CCN_UPCALL_RESULT_OK);
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
+  }
+
+  if( ! info ) return CCN_UPCALL_RESULT_ERR; // Now why would this happen?
+
+  show_comps( info->content_ccnb, info->content_comps);
+  segment = ccn_ccnb_fetch_segment(info->content_ccnb, info->content_comps);
+  GST_INFO ("...looks to be for segment: %d", segment);
+
+  if( CCN_UPCALL_INTEREST_TIMED_OUT == kind ) {
         if (selfp != me->ccn_closure) {
             GST_LOG_OBJECT(me, "CCN Interest timed out on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         GST_LOG_OBJECT(me, "CCN upcall reexpress -- timed out");
-        if (me->timeouts > 5) {
-            GST_LOG_OBJECT(me, "CCN upcall reexpress -- too many reexpressions");
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        me->timeouts++;
-        return(CCN_UPCALL_RESULT_REEXPRESS);
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
+		istate = fetchSegmentInterest( me, segment );
+		if( istate ) {
+			if( istate->timeouts > 5 ) {
+				GST_LOG_OBJECT(me, "CCN upcall reexpress -- too many reexpressions");
+				if( segment == me->post_seg ) // We have been waiting for this one...process as an empty block to trigger other activity
+					process_or_queue( me, me->post_seg, NULL, 0, FALSE );
+				else
+					freeInterestState( me, istate );
+				post_next_interest( me ); // make sure to ask for new stuff if needed, or else we stall waiting for nothing
+				return(CCN_UPCALL_RESULT_OK);
+			} else { 
+				istate->timeouts++;
+				return(CCN_UPCALL_RESULT_REEXPRESS);
+			}
+		} else {
+			GST_LOG_OBJECT(me, "segment not found in cache: %d", segment);
+			return(CCN_UPCALL_RESULT_OK);
+		}
+
+  } else if( CCN_UPCALL_CONTENT_UNVERIFIED == kind ) {
         if (selfp != me->ccn_closure) {
             GST_LOG_OBJECT(me, "CCN unverified content on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         return (CCN_UPCALL_RESULT_VERIFY);
 
-    case CCN_UPCALL_CONTENT:
-        if (selfp != me->ccn_closure) {
-            GST_LOG_OBJECT(me, "CCN content on dead closure %p", selfp);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        break;
-    default:
+  } else if ( CCN_UPCALL_CONTENT != kind ) {
         GST_LOG_OBJECT(me, "CCN upcall result error");
         return(CCN_UPCALL_RESULT_ERR);
-    }
+  }
+
+  if (selfp != me->ccn_closure) {
+		GST_LOG_OBJECT(me, "CCN content on dead closure %p", selfp);
+		return(CCN_UPCALL_RESULT_OK);
+  }
+
 
 	/* At this point it seems we have a data message we want to process */
 
@@ -985,8 +1332,6 @@ incoming_content(struct ccn_closure *selfp,
 
 	/* spit out some debug information */
     for( i=0; i<5; ++i ) {
-      const unsigned char *cp;
-      size_t sz;
       GST_DEBUG ( "%3d: ", i);
       if( 0 > ccn_name_comp_get( info->content_ccnb, info->content_comps, i, &cp, &sz ) ) {
         fprintf(stderr, "could not get comp\n");
@@ -994,18 +1339,18 @@ incoming_content(struct ccn_closure *selfp,
         hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
     }
     
-	/* get the data from the ccn buffer into our buffer */
+	/* go get the data and process it...note that the data pointer here is only temporary, a copy is needed to keep the data */
     ib = info->interest_ccnb;
     ic = info->interest_comps;
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) {
         GST_LOG_OBJECT(me, "CCN error on get value of size");
+		process_or_queue( me, segment, NULL, 0, FALSE ); // process null block to adjust interest array queue
+		post_next_interest( me ); // Keep the data flowing
         return(CCN_UPCALL_RESULT_ERR);
     }
 
-    me->timeouts = 0;
-
-    /* was this the last block? */
+    /* was this the last block? [code taken from a ccnx tool */
     /* \todo  the test below should get refactored into the library */
     if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
         info->pco->offset[CCN_PCO_E_FinalBlockID]) {
@@ -1019,7 +1364,7 @@ incoming_content(struct ccn_closure *selfp,
                             info->pco->offset[CCN_PCO_E_FinalBlockID],
                             &finalid,
                             &finalid_size);
-        if (cc->n < 2) abort();
+        if (cc->n < 2) abort(); // \todo we need to behave better than this
         ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
                             cc->buf[cc->n - 2],
                             cc->buf[cc->n - 1],
@@ -1035,58 +1380,10 @@ incoming_content(struct ccn_closure *selfp,
         b_last = TRUE;
 
     /* something to process */
-    if (data_size > 0) {
-  GST_DEBUG ("Have data!");
-        start_offset = me->i_pos % CCN_CHUNK_SIZE;
-        if (start_offset > data_size) {
-            GST_LOG_OBJECT(me, "start_offset %zu > data_size %zu", start_offset, data_size);
-        } else {
-            if ((data_size - start_offset) + me->i_bufoffset > CCN_FIFO_BLOCK_SIZE) {
-                /* won't fit in buffer, release the buffer upstream via the fifo queue */
-  GST_DEBUG ("pushing data");
-                GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
-				fifo_put(me, me->buf);
-                me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
-                me->i_bufoffset = 0;
-            }
-            /* will fit in buffer */
-            memcpy( GST_BUFFER_DATA(me->buf) + me->i_bufoffset, data + start_offset, data_size - start_offset);
-            me->i_bufoffset += (data_size - start_offset);
-        }
-    }
+	process_or_queue( me, segment, data, data_size, b_last );
+	post_next_interest( me );
 
-    /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
-     * and don't express an interest
-     */
-    if (b_last) {
-  GST_DEBUG ("handling last block");
-        if (me->i_bufoffset > 0) {
-            GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
-            fifo_put(me, me->buf);
-            me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
-            me->i_bufoffset = 0;
-        }
-/*
- * \todo should emit an eos here instead of the empty buffer
- */
-        GST_BUFFER_SIZE(me->buf) = 0;
-        fifo_put(me, me->buf);
-        me->i_bufoffset = 0;
-        return (CCN_UPCALL_RESULT_OK);
-    }
-
-	/* Dropping through to here means it was not the last block */
-    /* Ask for the next segment from the producer */
-    me->i_pos = CCN_CHUNK_SIZE * (1 + (me->i_pos / CCN_CHUNK_SIZE));
-    name = sequenced_name(me->p_name, me->i_seg++ );
-    res = ccn_express_interest(info->h, name, selfp, NULL);
-    ccn_charbuf_destroy(&name);
-  GST_DEBUG ("new interest sent");
-
-    if (res < 0) {
-        GST_LOG_OBJECT(me, "trouble sending the next interests");
-        return (CCN_UPCALL_RESULT_ERR);
-    }
+	if( ! b_last ) return post_next_interest( me );
 
     return(CCN_UPCALL_RESULT_OK);
 

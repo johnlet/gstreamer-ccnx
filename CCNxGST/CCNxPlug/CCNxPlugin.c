@@ -133,15 +133,16 @@ GST_PLUGIN_DEFINE (
  * There are two elements that have been implemented: ccnxsrc and ccnxsink.
  *
  * The ccnxsink GStreamer element is responsible for consuming packets from
- * a GST pipeline and delivering to them onto a CCNx network
+ * a GST pipeline and delivering them onto a CCNx network
  * for consumption by other clients wanting to read such published data;
  * via the partner element, ccnxsrc.
  * Both of these elements take an attribute, \em uri, which is used to name the
  * content; one while being published, the other to signify what content the
  * client is interested in receiving.
  * The protocol specified for the uri is specific to this kind of network:
- * \code
  * [more information on naming can be found at \ref SINKCCNNAMING ]
+ *
+ * \code
  *
  * ccnx://a/path/naming/the/content/from/global/to/more/specific
  * \endcode
@@ -161,4 +162,65 @@ GST_PLUGIN_DEFINE (
  * More details on the lower level designs can be found at:
  * \li \subpage CCNSRCDESIGN
  * \li \subpage CCNSINKDESIGN
+ *
+ * \section CCNXPLUGINEXAMPLE Example Usage of the CCNx Elements
+ *
+ * Here is a script showing the environment setup and invocation of a GST
+ * pipeline. The source of this pipeline is the camera on the laptop;
+ * the last element in the pipeline is the ccnxsink element:
+ * \code
+#!/bin/bash
+#
+# Send out camera input through a CCNx network
+# Used on a Windows XP system within an MSYS shell environment
+
+CCND_HOST=gryffindor.research.bell-labs.com
+
+CCN_KEYSTORE=/home/immersion/.ccnx/.ccnx_keystore
+CCN_PASSPHRASE=passw0rd
+
+export CCND_HOST CCN_KEYSTORE CCN_PASSPHRASE
+
+# MSYS shell seems to handle some of the inputs in an odd way.
+# Note the format of the uri. If we try ccnx:/windows/1, which works on
+# Linux, then it fails on windows because the shell we are using wants
+# to substitute the leading '/' with C:\path\to\msys\home. What a pain!
+# Luckily the following works and ccn does not have a problem with it.
+
+gst-launch dshowvideosrc ! \
+        video/x-raw-yuv, width=320, height=240, framerate=20/1 ! \
+        ffmpegcolorspace ! \
+        theoraenc ! \
+        oggmux ! \
+        ccnxsink uri=ccnx:///com/btl/gc/test/windows/1
+
+ * \endcode
+ * The first several elements of this pipeline take the video and effectively package
+ * it up into an ogg container. Some compression is taking place; raw video takes
+ * many bytes to transmit.
+ *
+ * The ccnxsink element will take its attribute, uri, and use that when publishing
+ * its content onto the network.
+ *
+ * A similar example can be drawn up for the ccnxsrc element, one where
+ * the source element on the pipeline reads the stream created from the
+ * above pipeline, and renders it onto the user's display:
+ * \code
+#!/bin/bash
+
+CCND_HOST=pollux.research.bell-labs.com
+
+CCN_KEYSTORE=/home/immersion/.ccnx/.ccnx_keystore
+CCN_PASSPHRASE=passw0rd
+
+export CCND_HOST CCN_KEYSTORE CCN_PASSPHRASE
+
+
+gst-launch ccnxsrc uri=ccnx:///windows/1 ! \
+        decodebin ! \
+        ffmpegcolorspace ! dshowvideosink
+
+immersion@IMMERSION4 /c/projects/gstreamer-ccnx/CCNxGST/Release
+$
+ * \endcode
  */

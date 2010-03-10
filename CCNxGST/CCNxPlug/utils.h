@@ -107,8 +107,15 @@ void hDump( const DumpAddr_t ptr, const DumpSize_t size );
  * Given the buffer holding the name, and the number of components to dump out,
  * we parse the name and send dumped output to stderr.
  */
-void
-compDump(struct ccn_charbuf *cbuf, int todo);
+void compDump(struct ccn_charbuf *cbuf, int todo);
+
+uintmax_t ccn_charbuf_fetch_segment(const struct ccn_charbuf *name);
+uintmax_t ccn_ccnb_fetch_segment( const unsigned char* buf, const struct ccn_indexbuf* idx);
+
+/*
+ * Dump out all components of a name
+ */
+void show_comps( const unsigned char* buf, const struct ccn_indexbuf* idx );
 
 /*
  * Compare stuff.
@@ -117,8 +124,7 @@ compDump(struct ccn_charbuf *cbuf, int todo);
  * -1    :: the two are equivalent
  * n    :: they differ at position n, starting position is 0
  */
-int
-name_compare(const unsigned char *data1,
+int name_compare(const unsigned char *data1,
                   const struct ccn_indexbuf *indexbuf1,
                   const unsigned char *data2,
                   const struct ccn_indexbuf *indexbuf2,

@@ -568,6 +568,7 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
 
 	  /* Signing via this function does a lot of work. The result is a buffer, temp, that is ready to be sent */
 	  ccn_sign_content(me->ccn, temp, sname, &me->sp, me->partial->buf, CCN_CHUNK_SIZE);
+	  ccn_hDump( sname->buf, sname->length );
   /*
    * See the comment above about holding this code.
    *
@@ -613,6 +614,7 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
     temp->length = 0;
 
 	ccn_sign_content(me->ccn, temp, sname, &me->sp, xferStart, CCN_CHUNK_SIZE);
+	  ccn_hDump( sname->buf, sname->length );
 	  /*
 	  if( me->keystore ) {
 
@@ -729,7 +731,7 @@ new_interests(struct ccn_closure *selfp,
     int sz1;
 	size_t sz2;
     long lastSeq;
-    struct ccn_signing_params myparams = CCN_SIGNING_PARAMS_INIT;
+    struct ccn_signing_params myparams;
     int i;
     int rc;
 
@@ -739,6 +741,8 @@ new_interests(struct ccn_closure *selfp,
 	cb = interestAsUri(info);
 	GST_DEBUG ("as URI: %s", ccn_charbuf_as_string( cb ));
 	ccn_charbuf_destroy(&cb);
+
+	myparams = me->sp;
 
 	/* Some debugging stuff */
 	for( i=0; i<10; ++i ) {
@@ -812,7 +816,7 @@ new_interests(struct ccn_closure *selfp,
 				  break;
 			  } // Component not meta, keep looking
 		  }
-		} // At this point, i is left pointing at '_meta_'
+		} // At this point, i is left pointing at '_meta_' or at the end of component list
 
         if( cp1 ) {
           hDump( DUMP_ADDR(cp1), DUMP_SIZE(sz1) );
@@ -821,14 +825,15 @@ new_interests(struct ccn_closure *selfp,
 
           /* publish what segment we are up to in reply to the meta request */
           lastSeq = me->segment - 1;
-          GST_INFO("sending meta data...1...segment: %d", lastSeq);
+          GST_INFO("sending meta data....segment: %d", lastSeq);
           
           sname = ccn_charbuf_create();
           ccn_name_init(sname);
-          rc = ccn_name_append_components(sname, info->interest_ccnb, info->interest_comps->buf[0], info->interest_comps->buf[info->interest_comps->n-1]);
+          rc = ccn_name_append_components(sname, info->interest_ccnb,
+							info->interest_comps->buf[0], info->interest_comps->buf[i+2]);
           if (rc < 0) goto Error_Interest;
-          rc = ccn_create_version(me->ccn, sname, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0);
-          if (rc < 0) goto Error_Interest;
+          // rc = ccn_create_version(me->ccn, sname, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0);
+          // if (rc < 0) goto Error_Interest;
           me->temp->length=0;
           rc = ccn_sign_content(me->ccn, me->temp, sname, &myparams,
                           &lastSeq, sizeof(lastSeq));
@@ -839,6 +844,7 @@ new_interests(struct ccn_closure *selfp,
           }
           
           GST_INFO("sending meta data...");
+		  hDump(DUMP_ADDR(me->temp->buf), DUMP_SIZE(me->temp->length));
           rc = ccn_put(me->ccn, me->temp->buf, me->temp->length);
           me->temp->length = 0;
           if (rc < 0) {
@@ -988,12 +994,14 @@ static GStaticRecMutex	task_mutex		/**< I forget why we use this in this way */
 static void
 ccn_event_thread(void *data) {
   Gstccnxsink* me = (Gstccnxsink*) data;
+  struct ccn_charbuf *filtName;
   struct ccn_charbuf *temp;
   int res = 0;
 
   GST_DEBUG ("CCNxSink event: *** event thread starting");
   
     temp = ccn_charbuf_create();
+	filtName = ccn_charbuf_create();
 
   /* A closure is what defines what to do when an inbound interest arrives */
   if( (me->ccn_closure = calloc(1, sizeof(struct ccn_closure))) == NULL ) {
@@ -1005,9 +1013,12 @@ ccn_event_thread(void *data) {
   me->ccn_closure->data = me;
   me->ccn_closure->p = new_interests;
   me->timeouts = 0;
+  ccn_charbuf_append( filtName, me->name->buf, me->name->length );
   
   /* This call will set up a handler for interests we expect to get from clients */
-  ccn_set_interest_filter(me->ccn, me->name, me->ccn_closure);
+
+  hDump(DUMP_ADDR(filtName->buf), DUMP_SIZE(filtName->length));
+  ccn_set_interest_filter(me->ccn, filtName, me->ccn_closure);
   GST_DEBUG ("CCNxSink event: interest filter registered\n");
 
   /* Some debugging information */

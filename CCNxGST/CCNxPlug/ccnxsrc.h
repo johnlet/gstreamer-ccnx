@@ -126,6 +126,35 @@ typedef struct _Gstccnxsrc      Gstccnxsrc;
  */
 typedef struct _GstccnxsrcClass GstccnxsrcClass;
 
+/**
+ * Convenience definition
+ */
+typedef struct _CcnxInterestState CcnxInterestState;
+typedef enum _OInterestState OInterestState;
+
+/**
+ * Outstanding interest have one of these states
+ */
+enum _OInterestState {
+	OInterest_0					/**< Invalud state */
+	, OInterest_idle			/**< Indicator that this state is available for use by a new interest */
+	, OInterest_waiting			/**< We are waiting for the interest to be answered */
+	, OInterest_timeout			/**< This interest has timed out */
+	, OInterest_havedata		/**< Data has arrived for this interest */
+};
+
+/**
+ * \brief Maintains information about outstanding interests
+ */
+struct _CcnxInterestState {
+	OInterestState		state;			/**< State of this outstanding interest */
+	gulong				seg;			/**< segment number we are waiting for */
+	gboolean			lastBlock;		/**< flag indicating this is the last segment we will get */
+	guchar				*data;			/**< where the data is being held */
+	size_t				size;			/**< how much data we have */
+	gint				timeouts;		/**< count of how many times we asked for this data */
+};
+
 
 /**
  * \brief Member data definition of our CCNx src element
@@ -138,10 +167,12 @@ struct _Gstccnxsrc
   GstCaps		*caps;					/**< -> capabilities definition */
 
   gchar			*uri;					/**< URI we use to name the data we have interest in */
-  long			i_seg;					/**< keeps track of what segment we need to ask for next */
-  long			i_pos;					/**< keeps track of where we are in the stream of bytes coming in */
-  long			i_bufoffset;			/**< keeps track of where we are in filling of the next pipeline buffer */
-  int			timeouts;				/**< counts the number of interest timeouts we get before getting data */
+  glong			intWindow;				/**< count of outstanding interests we have */
+  CcnxInterestState *intStates;			/**< array of outstanding interests state structures */
+  gulong		post_seg;				/**< keeps track of what segment we need to post to the pipeline next */
+  gulong		i_seg;					/**< keeps track of what segment we need to ask for next */
+  glong			i_pos;					/**< keeps track of where we are in the stream of bytes coming in */
+  glong			i_bufoffset;			/**< keeps track of where we are in filling of the next pipeline buffer */
   struct ccn	*ccn;					/**< handle to the ccn context with which we interact */
   struct ccn_closure *ccn_closure;		/**< defines the call-back information needed when ccn has something for us */
   struct ccn_signing_params sp;			/**< signing information used when we send interests out onto the network */
@@ -152,8 +183,8 @@ struct _Gstccnxsrc
   GCond			*fifo_cond;				/**< used with the fifo_lock to wait for a queue to change from full to not full */
   GstBuffer*    buf;					/**< used in holding data moving between the network and the pipeline */
   GstBuffer*	fifo[CCNX_SRC_FIFO_MAX]; /**< the FIFO queue between the ccn network and the pipeline data delivery */
-  int			fifo_head;				/**< index to the head of the FIFO queue; for the reader */
-  int			fifo_tail;				/**< index to the tail of the FIFO queue; for the writer */
+  gint			fifo_head;				/**< index to the head of the FIFO queue; for the reader */
+  gint			fifo_tail;				/**< index to the tail of the FIFO queue; for the writer */
 
   gboolean		silent;					/**< an element attribute; currently not used */
 };
