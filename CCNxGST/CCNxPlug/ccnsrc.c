@@ -42,6 +42,8 @@
 #  include "config.h"
 #endif
 
+#include "conf.h"
+
 #include <gst/gst.h>
 #include <gst/base/gstpushsrc.h>
 #include <gst/netbuffer/gstnetbuffer.h>
@@ -50,7 +52,7 @@
 #include "utils.h"
 
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 #include <limits.h>
 #include <stdlib.h>
@@ -301,7 +303,7 @@ gst_ccnxsrc_class_init (GstccnxsrcClass * klass)
  */
 static void
 gst_ccnxsrc_init (Gstccnxsrc * me,
-    GstccnxsrcClass * gclass)
+    /*@unused@*/ GstccnxsrcClass * gclass)
 {
 	gint i;
 
@@ -492,7 +494,6 @@ gst_ccnxsrc_finalize(GObject *obj) {
  * \param basename	the prefix, possibly versioined with a timestamp, to be used in the new name
  * \param seq		the sequence number to add to the prefix
  * \return character buffer with the new name
- */
 static struct ccn_charbuf *
 sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
 {
@@ -503,6 +504,7 @@ sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);
     return(name);
 }
+ */
 
 /**
  * Looks for an idle slot in the array
@@ -513,7 +515,8 @@ sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
  * \param me		source context where the array is located
  * \return pointer to the available state slot, NULL if none found
  */
-CcnxInterestState*
+/*@null@*/
+static CcnxInterestState*
 allocInterestState( Gstccnxsrc* me ) {
 	CcnxInterestState* ans = NULL;
 	gint i;
@@ -544,7 +547,7 @@ allocInterestState( Gstccnxsrc* me ) {
  * \param me		context holding the array of states
  * \param is		state slot to be released
  */
-void
+static void
 freeInterestState( Gstccnxsrc *me, CcnxInterestState* is ) {
 	if( NULL == me || NULL == is ) return;
 	/* free buffers, potentially */
@@ -564,8 +567,9 @@ freeInterestState( Gstccnxsrc *me, CcnxInterestState* is ) {
  * \param seg		segment number to find
  * \return pointer to the state entry holding that segment, NULL if not found
  */
-CcnxInterestState*
-fetchSegmentInterest( Gstccnxsrc* me, gulong seg ) {
+/*@null@*/
+static CcnxInterestState*
+fetchSegmentInterest( Gstccnxsrc* me, uintmax_t seg ) {
 	gint i;
 
 	if( NULL == me ) return NULL;
@@ -592,10 +596,11 @@ fetchSegmentInterest( Gstccnxsrc* me, gulong seg ) {
  * \retval seg	if we could actually match the segment
  * \retval N>seg	if a gap exists between what was asked for and what we have
  */
-CcnxInterestState*
-nextSegmentInterest( Gstccnxsrc* me, gulong seg ) {
+/*@null@*/
+static CcnxInterestState*
+nextSegmentInterest( Gstccnxsrc* me, uintmax_t seg ) {
 	gint				i;
-	gulong				best;
+	uintmax_t			best;
 	CcnxInterestState	*ans = NULL;
 
 	if( NULL == me ) return NULL;
@@ -626,10 +631,10 @@ nextSegmentInterest( Gstccnxsrc* me, gulong seg ) {
  * \param seg		the segment to express interest in
  * \return status value from the express call made to CCN
  */
-gint
-request_segment( Gstccnxsrc* me, long seg ) {
+static gint
+request_segment( Gstccnxsrc* me, uintmax_t seg ) {
   struct ccn_charbuf *nm = NULL;
-  gint rc;
+  gint rc = 0;
 
   if( NULL == me ) return -1;
 
@@ -639,7 +644,7 @@ request_segment( Gstccnxsrc* me, long seg ) {
   rc |= ccn_name_append_numeric(nm, CCN_MARKER_SEQNUM, seg);
   
   GST_INFO ("reqseg - name for interest...");
-  hDump(nm->buf, nm->length);
+  // hDump(nm->buf, nm->length);
   rc |= ccn_express_interest(me->ccn, nm, me->ccn_closure,
                                me->p_template);
   ccn_charbuf_destroy(&nm);
@@ -781,10 +786,10 @@ ccn_event_thread(void *data) {
  * \retval GST_FLOW_OK buffer has been loaded with data
  * \retval GST_FLOW_ERROR something bad has happened
  */
-static GstFlowReturn gst_ccnxsrc_create (GstBaseSrc * psrc, guint64 offset, guint size, GstBuffer ** buf)
+static GstFlowReturn
+gst_ccnxsrc_create (GstBaseSrc * psrc, /*@unused@*/ guint64 offset, /*@unused@*/ guint size, GstBuffer ** buf)
 {
   Gstccnxsrc *me;
-  size_t sz;
   gboolean looping = TRUE;
   GstBuffer* ans = NULL;
   me = GST_CCNXSRC (psrc);
@@ -801,6 +806,7 @@ static GstFlowReturn gst_ccnxsrc_create (GstBaseSrc * psrc, guint64 offset, guin
   }
 
   if( ans ) {
+    guint sz;
     sz = GST_BUFFER_SIZE(ans);
     GST_LOG_OBJECT (me, "got some data %d", sz);
     *buf = ans;
@@ -828,11 +834,11 @@ static GstFlowReturn gst_ccnxsrc_create (GstBaseSrc * psrc, guint64 offset, guin
  * \param timeout	how long to wait around
  * \return the segment number to ask for first, 0 on timeout
  */
-long *
+static uintmax_t *
 get_segment(struct ccn *h, struct ccn_charbuf *name, int timeout)
 {
     struct ccn_charbuf *hn;
-    long *result = NULL;
+    uintmax_t *result = NULL;
     int res = 0;
 
   GST_INFO ("get_segment step 1");
@@ -851,18 +857,18 @@ get_segment(struct ccn *h, struct ccn_charbuf *name, int timeout)
         const unsigned char *hc;
         size_t hcs;
 
-        hDump(DUMP_ADDR(hn->buf), DUMP_SIZE(hn->length));
+        // hDump(DUMP_ADDR(hn->buf), DUMP_SIZE(hn->length));
   GST_INFO ("get_segment step 10");
         res = ccn_get(h, hn, NULL, timeout, ho, &pcobuf, NULL, 0);
   GST_INFO ("get_segment step 11, res: %d", res);
         if (res >= 0) {
             hc = ho->buf;
             hcs = ho->length;
-            hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
+            // hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
             ccn_content_get_value(hc, hcs, &pcobuf, &hc, &hcs);
-            hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
-            result = calloc( 1, sizeof(long) );
-            memcpy( result, hc, sizeof(long) );
+            // hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
+            result = calloc( 1, sizeof(uintmax_t) );
+            memcpy( result, hc, sizeof(uintmax_t) );
         }
         ccn_charbuf_destroy(&ho);
     }
@@ -897,7 +903,7 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
   CcnxInterestState *istate;
 
   struct ccn_charbuf *p_name = NULL;
-  gulong *p_seg = NULL;
+  uintmax_t *p_seg = NULL;
   gint i_ret = 0;
   gboolean b_ret = FALSE;
 
@@ -946,7 +952,7 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
                                 CCN_VERSION_TIMEOUT);
 
   GST_INFO ("step 20 - name so far...");
-  hDump(src->p_name->buf, src->p_name->length);
+  // hDump(src->p_name->buf, src->p_name->length);
   src->i_seg = 0;
   if (i_ret == 0) { /* name is versioned, so get the meta data to obtain the length */
     p_seg = get_segment(src->ccn, src->p_name, CCN_HEADER_TIMEOUT);
@@ -969,7 +975,7 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
   src->post_seg = 0;
   istate = allocInterestState( src );
   if( ! istate ) { // This should not happen, but maybe
-	GST_ELEMENT_ERROR(src, RESOURCE, READ, NULL, ("trouble allocating interest state structure"));
+	GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("trouble allocating interest state structure"));
 	return FALSE;
   }
   istate->seg = 0;
@@ -1142,7 +1148,7 @@ process_segment( Gstccnxsrc *me, const guchar* data, const size_t data_size, con
  * \param b_last	flag telling us this is the last block of data; which can still arrive out of order of course
  */
 static void
-process_or_queue( Gstccnxsrc *me, const gulong segment, const guchar* data, const size_t data_size, const gboolean b_last ) {
+process_or_queue( Gstccnxsrc *me, const uintmax_t segment, const guchar* data, const size_t data_size, const gboolean b_last ) {
 	CcnxInterestState *istate = NULL;
 	
 	istate = fetchSegmentInterest( me, segment );
@@ -1195,8 +1201,8 @@ process_or_queue( Gstccnxsrc *me, const gulong segment, const guchar* data, cons
 static enum ccn_upcall_res
 post_next_interest( Gstccnxsrc *me ) {
 	CcnxInterestState	*is;
-	gint				res;
-	gulong				segment;
+	gint			res;
+	uintmax_t		segment;
 
 	while( me->intWindow < CCN_WINDOW_SIZE ) {
 		/* Ask for the next segment from the producer */
@@ -1249,19 +1255,17 @@ incoming_content(struct ccn_closure *selfp,
 
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
-    struct ccn_charbuf *name = NULL;
     const unsigned char *ib = NULL; /* info->interest_ccnb */
     struct ccn_indexbuf *ic = NULL;
-    gint i;
-	gulong segment;
-	CcnxInterestState *istate = NULL;
+    unsigned int i;
+    uintmax_t segment;
+    CcnxInterestState *istate = NULL;
     gint res;
-	const unsigned char *cp;
-	size_t sz;
+    const unsigned char *cp;
+    size_t sz;
     const unsigned char *data = NULL;
     size_t data_size = 0;
     gboolean b_last = FALSE;
-	const unsigned char buff[1024];
 
   GST_INFO ("content has arrived!");
  
@@ -1286,15 +1290,15 @@ incoming_content(struct ccn_closure *selfp,
 
   if( ! info ) return CCN_UPCALL_RESULT_ERR; // Now why would this happen?
 
-  show_comps( info->content_ccnb, info->content_comps);
-  segment = ccn_ccnb_fetch_segment(info->content_ccnb, info->content_comps);
-  GST_INFO ("...looks to be for segment: %d", segment);
+  // show_comps( info->content_ccnb, info->content_comps);
 
   if( CCN_UPCALL_INTEREST_TIMED_OUT == kind ) {
         if (selfp != me->ccn_closure) {
             GST_LOG_OBJECT(me, "CCN Interest timed out on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
+        segment = ccn_ccnb_fetch_segment(info->interest_ccnb, info->interest_comps);
+        GST_INFO ("...looks to be for segment: %d", segment);
         GST_LOG_OBJECT(me, "CCN upcall reexpress -- timed out");
 		istate = fetchSegmentInterest( me, segment );
 		if( istate ) {
@@ -1327,6 +1331,8 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
   }
 
+  segment = ccn_ccnb_fetch_segment(info->content_ccnb, info->content_comps);
+  GST_INFO ("...looks to be for segment: %d", segment);
   if (selfp != me->ccn_closure) {
 		GST_LOG_OBJECT(me, "CCN content on dead closure %p", selfp);
 		return(CCN_UPCALL_RESULT_OK);
@@ -1342,9 +1348,10 @@ incoming_content(struct ccn_closure *selfp,
     for( i=0; i<5; ++i ) {
       GST_DEBUG ( "%3d: ", i);
       if( 0 > ccn_name_comp_get( info->content_ccnb, info->content_comps, i, &cp, &sz ) ) {
-        fprintf(stderr, "could not get comp\n");
-      } else
-        hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
+        // fprintf(stderr, "could not get comp\n");
+      } else {
+        // hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
+      }
     }
     
 	/* go get the data and process it...note that the data pointer here is only temporary, a copy is needed to keep the data */
@@ -1468,7 +1475,7 @@ gst_ccnxsrc_uri_set_uri (GstURIHandler * handler, const gchar * uri)
  * \param iface_data	\todo not sure
  */
 static void
-gst_ccnxsrc_uri_handler_init (gpointer g_iface, gpointer iface_data)
+gst_ccnxsrc_uri_handler_init (gpointer g_iface, /*@unused@*/ gpointer iface_data)
 {
   GstURIHandlerInterface *iface = (GstURIHandlerInterface *) g_iface;
 

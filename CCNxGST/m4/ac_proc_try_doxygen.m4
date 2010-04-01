@@ -1,0 +1,5 @@
+AC_DEFUN([AC_PROG_TRY_DOXYGEN],[
+AC_REQUIRE([AC_EXEEXT])dnl
+test -z "$DOXYGEN" &&\
+ AC_CHECK_PROGS([DOXYGEN], [doxygen$EXEEST])dnl
+])

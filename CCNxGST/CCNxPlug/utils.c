@@ -73,16 +73,22 @@ const char* COPYRIGHT = " \
  * \
  ";
 
+#ifdef WIN32
 #include "StdAfx.h"
+#endif
 
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #endif
 
+#include "conf.h"
+
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
+#include <ccn/ccn.h>
 
 /**
  * Retrieve the host name where the ccnd router is located
@@ -114,7 +120,7 @@ ccndHost() {
  */
 
 int
-loadKey( struct ccn *ccn, struct ccn_signing_params *sp ) {
+loadKey( struct ccn *ccn, const struct ccn_signing_params *sp ) {
 	int rc;
 	char* str;
 	struct ccn_charbuf* pubid;
@@ -143,8 +149,8 @@ loadKey( struct ccn *ccn, struct ccn_signing_params *sp ) {
 		ccn_charbuf_destroy( &temp );
 	}
 	if( rc == 0 && pubid->length == sizeof(sp->pubid) ) {
-		memcpy( sp->pubid, pubid->buf, sizeof(sp->pubid) );
-		ccn_default_pubid(ccn, &sp);
+		memcpy( (char*)sp->pubid, pubid->buf, sizeof(sp->pubid) );
+		ccn_default_pubid(ccn, sp);
 	}
 	ccn_charbuf_destroy(&pubid);
 	return rc;
@@ -295,9 +301,14 @@ commonDump( const DumpAddr_t ptr, const DumpSize_t size, char* addrFmt, char* by
   int byt = 0;
   int idx = 0;
   char chrs[24];
-  
+
+#if __WORDSIZE == 64
+	long mask = 0xFFFFFFFFFFFFFFF8;
+#else
+	long mask = 0xFFFFFFF8;
+#endif  
   /* Round down the address to be printed */
-  cp = (DumpAddr_t)((int)cp & 0xFFFFFFF8);
+  cp = (DumpAddr_t)((long)cp & mask);
   fprintf(stderr, addrFmt, cp);
   
   /* Now add padding for those bytes not asked for */
@@ -466,6 +477,9 @@ uintmax_t ccn_ccnb_fetch_segment( const unsigned char* buf, const struct ccn_ind
   size_t sz;
   uintmax_t ans = 0;
   int i;
+
+  if( NULL == buf || NULL == idx ) return -1;
+
   if( 0 > ccn_name_comp_get( buf, idx, idx->n-2, &cp, &sz ) )
     return -1;
   for( i=1; i<sz; ++i ) ans = (ans<<8) + cp[i]; // skip first byte; marker
@@ -480,7 +494,7 @@ ccn_charbuf_fetch_segment(const struct ccn_charbuf *name) {
     struct ccn_buf_decoder *d;
     size_t lc;
     size_t oc;
-    int size;
+    size_t size;
     const unsigned char *comp;
 
     if(n >= 1) {
@@ -517,7 +531,7 @@ show_comps( const unsigned char* buf, const struct ccn_indexbuf* idx ) {
       if( 0 > ccn_name_comp_get( buf, idx, i, &cp, &sz ) )
         fprintf(stderr, "could not get comp\n");
       else
-        ccn_hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
+        hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
     }
 
 }

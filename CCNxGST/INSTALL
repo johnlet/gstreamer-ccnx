@@ -1,0 +1,40 @@
+Downloading
+===========
+This project can be cloned with git to your local machine. It is not important where you create the
+copy on your machine.
+
+Linux - Build
+=============
+The typical auto-build steps should be followed:
+  ./configure --with-ccn-dir=<prefix to where ccnx was installed>
+  make install
+
+The plug-in file will be located in: <prefix-path>/lib/gstreamer-0.10/libccnx.so
+The build requires the libccn.a and headers from ccnx, thus you need to specify their location during
+the configure step.
+
+MSVC - Configuration
+=============
+Before building this plug-in, you must first create and set 3 new environment variables.
+1- stop running any MSVC you may have
+2- open the Control Panel->System
+3- Under the tab "Advanced", select "Environment Variables"
+4- Under "System Variables", click 'New'  [do this for each variable]
+GST_DIR  - enter the path to your GStreamer installation
+ e.g. C:\GC\gstreamer\0.10.4
+OPENCV_DIR - enter the path to your OpenCV installation
+ e.g. C:\Program Files\OpenCV
+MSYS_DIR - enter the path to your MSYS installation
+ e.g. C:\GC\msys
+5- Now click 'OK' and 'OK' to commit these additions
+
+You may now start your MSVC environment.
+
+MSVC - Load The Solution, and build
+=================
+Within MSVC, File->Open->Project/Solution.
+Navigate to where you cloned the gstreamer-ccnx project, and select the .sln file.
+You are now ready to build the project.
+
+The resulting CCNxPlugin.dll file will be under the Release folder. This should be
+copied to a folder searched by the GStreamer tools [gst-launcher] prior to using the elements in a pipeline.

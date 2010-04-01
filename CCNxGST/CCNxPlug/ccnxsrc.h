@@ -156,7 +156,7 @@ enum _OInterestState {
  */
 struct _CcnxInterestState {
 	OInterestState		state;			/**< State of this outstanding interest */
-	gulong				seg;			/**< segment number we are waiting for */
+	uintmax_t			seg;			/**< segment number we are waiting for */
 	gboolean			lastBlock;		/**< flag indicating this is the last segment we will get */
 	guchar				*data;			/**< where the data is being held */
 	size_t				size;			/**< how much data we have */
@@ -175,12 +175,12 @@ struct _Gstccnxsrc
   GstCaps		*caps;					/**< -> capabilities definition */
 
   gchar			*uri;					/**< URI we use to name the data we have interest in */
-  glong			intWindow;				/**< count of outstanding interests we have */
+  gint			intWindow;				/**< count of outstanding interests we have */
   CcnxInterestState *intStates;			/**< array of outstanding interests state structures */
-  gulong		post_seg;				/**< keeps track of what segment we need to post to the pipeline next */
-  gulong		i_seg;					/**< keeps track of what segment we need to ask for next */
-  glong			i_pos;					/**< keeps track of where we are in the stream of bytes coming in */
-  glong			i_bufoffset;			/**< keeps track of where we are in filling of the next pipeline buffer */
+  uintmax_t		post_seg;				/**< keeps track of what segment we need to post to the pipeline next */
+  uintmax_t		i_seg;					/**< keeps track of what segment we need to ask for next */
+  size_t		i_pos;					/**< keeps track of where we are in the stream of bytes coming in */
+  size_t		i_bufoffset;			/**< keeps track of where we are in filling of the next pipeline buffer */
   struct ccn	*ccn;					/**< handle to the ccn context with which we interact */
   struct ccn_closure *ccn_closure;		/**< defines the call-back information needed when ccn has something for us */
   struct ccn_signing_params sp;			/**< signing information used when we send interests out onto the network */

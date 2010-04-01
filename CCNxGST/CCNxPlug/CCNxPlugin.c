@@ -37,12 +37,17 @@
  *
  */
 
+#ifdef WIN32
 #include "stdafx.h"
+#endif
+
 #include "CCNxPlugin.h"
 
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #endif
+
+#include "conf.h"
 
 #include "ccnxsrc.h"
 #include "ccnxsink.h"

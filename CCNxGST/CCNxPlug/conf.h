@@ -1,4 +1,4 @@
-/** \file config.h
+/** \file conf.h
  * \brief Collection of common configuration parameters and environment peculiars
  *
  * \date Created Jan, 2010
@@ -37,8 +37,8 @@
  *
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef CONF_H
+#define CONF_H
 
 /**
  * Size of the FIFO queue used between the pipeline and the network
@@ -89,4 +89,4 @@
 #endif
 
 
-#endif /* CONFIG_h */
+#endif /* CONF_H */

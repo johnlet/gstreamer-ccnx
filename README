@@ -1,59 +1,8 @@
 
 CCNxGST:
-This MSVC Solution contains a GStreamer Plug-in used to transport media traffic over a CCNx network.
+This code contains a GStreamer Plug-in used to transport media traffic over a CCNx network.
+It can be compiled in an MSVC environment for Windows, or autotools for Linux.
 Within the solution is a single project, CCNxPlug that contains the 2 elements needed for the plug-in:
 - ccnxsrc, which reads packets from the network and feeds them to the GStreamer pipeline
 - ccnxsink, which sits at the end of the pipeline to publish packets onto the network
-
-Downloading
-===========
-This project can be cloned with git to your local machine. It is not important where you create the
-copy on your machine.
-
-Configuration
-=============
-Before building this plug-in, you must first create and set 3 new environment variables.
-1- stop running any MSVC you may have
-2- open the Control Panel->System
-3- Under the tab "Advanced", select "Environment Variables"
-4- Under "System Variables", click 'New'  [do this for each variable]
-GST_DIR  - enter the path to your GStreamer installation
- e.g. C:\GC\gstreamer\0.10.4
-OPENCV_DIR - enter the path to your OpenCV installation
- e.g. C:\Program Files\OpenCV
-MSYS_DIR - enter the path to your MSYS installation
- e.g. C:\GC\msys
-5- Now click 'OK' and 'OK' to commit these additions
-
-You may now start your MSVC environment.
-
-Load The Solution
-=================
-Within MSVC, File->Open->Project/Solution.
-Navigate to where you cloned the gstreamer-ccnx project, and select the .sln file.
-You are now ready to build the project.
-
-The resulting CCNxPlugin.dll file will be under the Release folder. This should be
-copied to a folder searched by the GStreamer tools [gst-launcher] prior to using the elements in a pipeline.
-
-Using the Plugin
-================
-First an environment variable must be set to tell the elements where the CCNx router can be found.
-See the example below.
-
-The two elements take an attribute 'uri'. The sink element will produce it content using that prefix,
-and the source element will express interest in content with that prefix.
-
-Example streaming data from a camera out to the ccnx network:
-CCND_HOST=gryffindor.research.bell-labs.com
-export CCND_HOST
-gst_launch dshowvideosrc ! video/x-raw-yuv, width=320, height=240, framerate=20/1 ! ffmpegcolorspace ! theoraenc ! oogmux ! ccnsink uri=ccnx:///windows/1
-
-NOTE: the uri must have protocol ccnx, and the extra slashes to get past the shell interpreter.
-
-To view this video stream using the source element:
-CCND_HOST=gryffindor.research.bell-labs.com
-export CCND_HOST
-gst-launch ccnxsrc uri=ccnx:///windows/1 ! decodebin ! ffmpegcolorspace ! dshowvideosink
-
-
+See its local README file for additional details.

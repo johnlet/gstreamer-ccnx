@@ -41,6 +41,8 @@
 #  include "config.h"
 #endif
 
+#include "conf.h"
+
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 #include <gst/netbuffer/gstnetbuffer.h>
@@ -50,6 +52,9 @@
 #include <ccn/keystore.h>
 #include <ccn/signing.h>
 
+#ifdef HAVE_UNISTD_H
+#  include <unistd.h>
+#endif
 #include <limits.h>
 #include <stdlib.h>
 #include "utils.h"
@@ -175,7 +180,7 @@ static GstFlowReturn gst_ccnxsink_publish (GstBaseSink * sink, GstBuffer * buf);
  * In our case, there are not initialization steps at this point.
  */
 static void
-_do_init (GType type)
+_do_init ( /*@unused@*/ GType type )
 {
 
 }
@@ -279,7 +284,7 @@ gst_ccnxsink_class_init (GstccnxsinkClass * klass)
  */
 static void
 gst_ccnxsink_init (Gstccnxsink * me,
-    GstccnxsinkClass * gclass)
+    /*@unused@*/ GstccnxsinkClass * gclass )
 {
 	GST_DEBUG("CCNxSink: instance init");
 
@@ -409,6 +414,7 @@ fifo_put(  Gstccnxsink* me, GstBuffer *buf, int overwrite ) {
  * \param me		element context where the fifo is kept
  * \return buffer containing the next element, NULL if the queue is empty
  */
+/*@null@*/
 static GstBuffer*
 fifo_pop(  Gstccnxsink* me ) {
     GstBuffer* ans;
@@ -454,12 +460,17 @@ fifo_pop(  Gstccnxsink* me ) {
  *
  * \return A GST timestamp
  */
+static
 GstClockTime
 tNow() {
   struct timespec t;
-  
+  GstClockTime ans;
+
   clock_gettime( CLOCK_REALTIME, &t );
-  return (t.tv_sec * A_BILLION + t.tv_nsec);
+  ans = t.tv_sec;
+  ans *= A_BILLION;
+  ans += t.tv_nsec;
+  return ans;
 }
 
 /**
@@ -507,14 +518,14 @@ makeTimespec( GstClockTime t, struct timespec * ts ) {
  * \retval GST_FLOW_ERROR something went wrong
  */
 static GstFlowReturn
-gst_ccnxsink_send ( Gstccnxsink *me, guint8 *data, guint size, GstClockTime ts ) {
+gst_ccnxsink_send ( Gstccnxsink *me, guint8 *data, guint size, /*@unused@*/ GstClockTime ts ) {
   struct ccn_charbuf  *sname;			/* where we construct the name of this data message */
   struct ccn_charbuf  *hold;			/* holds the last block published so we can properly manage memory */
   struct ccn_charbuf  *temp;			/* where we construct the message to send */
   struct ccn_charbuf  *signed_info;		/* signing data within the message */
   gint                rc;				/* return status on various calls */
   guint8              *xferStart;		/* points into the source buffer, data, as we packetize into CCN blocks */
-  guint               bytesLeft;		/* keeps track of how much more we have to do */
+  size_t               bytesLeft;		/* keeps track of how much more we have to do */
 
   /* Initialize our local storage and allocate buffers we will need */
   xferStart = data;
@@ -535,14 +546,14 @@ gst_ccnxsink_send ( Gstccnxsink *me, guint8 *data, guint size, GstClockTime ts )
   if( me->keystore ) {
     signed_info->length = 0;
 GST_LOG_OBJECT( me, "send - signing info\n" );
-    rc = ccn_signed_info_create(signed_info,
-                                 /*pubkeyidccn_keystore_public_key_digest(me->keystore),
-                                 /*publisher_key_id_sizeccn_keystore_public_key_digest_length(me->keystore),
-                                 /*datetimeNULL,
-                                 /*typeCCN_CONTENT_DATA,
-                                 /*freshness me->expire,
-                                 /*finalblockidNULL,
-                                 me->keylocator);
+    rc = ccn_signed_info_create(signed_info
+                                 , ccn_keystore_public_key_digest(me->keystore) //pubkeyid 
+                                 , ccn_keystore_public_key_digest_length(me->keystore) //publisher_key_id_size 
+                                 , NULL			//datetime
+                                 , CCN_CONTENT_DATA	//type
+                                 , me->expire		//freshness
+                                 , NULL			//finalblockid
+                                 , me->keylocator);
     // Put the keylocator in the first block only. 
     ccn_charbuf_destroy(&(me->keylocator));
     if (rc < 0) {
@@ -553,7 +564,8 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
 	*/
 
   if( me->partial ) { /* We had some left over from the last send */
-    guint extra;
+    size_t extra;
+    uintmax_t seg;
 
 	/* find out how much room we have left, and copy over the bytes we have, or need to fill the block */
     extra = CCN_CHUNK_SIZE - me->partial->length;
@@ -568,15 +580,16 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
 	/* Filling to the size of the CCN packet means we need to send it out */
     if( me->partial->length == CCN_CHUNK_SIZE ) {
       sname->length = 0;
+      seg = me->segment++;
 
 	  /* build up a name starting with the prefix, then the sequence number */
       ccn_charbuf_append(sname, me->name->buf, me->name->length);
-      ccn_name_append_numeric(sname, CCN_MARKER_SEQNUM, me->segment++);
+      ccn_name_append_numeric(sname, CCN_MARKER_SEQNUM, seg);
       temp->length = 0;
 
 	  /* Signing via this function does a lot of work. The result is a buffer, temp, that is ready to be sent */
 	  ccn_sign_content(me->ccn, temp, sname, &me->sp, me->partial->buf, CCN_CHUNK_SIZE);
-	  ccn_hDump( sname->buf, sname->length );
+	 //  hDump( sname->buf, sname->length );
   /*
    * See the comment above about holding this code.
    *
@@ -614,15 +627,17 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
 
   /* Now that we are done with the partial block, go and process the new data in much the same fashion */
   while( bytesLeft >= CCN_CHUNK_SIZE ) {
+    uintmax_t seg;
     GST_LOG_OBJECT( me, "send - bytesLeft: %d\n", bytesLeft );
     sname->length = 0;
+    seg = me->segment++;
     ccn_charbuf_append(sname, me->name->buf, me->name->length);
-    ccn_name_append_numeric(sname, CCN_MARKER_SEQNUM, me->segment++);
+    ccn_name_append_numeric(sname, CCN_MARKER_SEQNUM, seg);
     GST_LOG_OBJECT( me, "send - name is ready\n" );
     temp->length = 0;
 
 	ccn_sign_content(me->ccn, temp, sname, &me->sp, xferStart, CCN_CHUNK_SIZE);
-	  ccn_hDump( sname->buf, sname->length );
+	 //  hDump( sname->buf, sname->length );
 	  /*
 	  if( me->keystore ) {
 
@@ -630,7 +645,7 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
 		rc = ccn_encode_ContentObject(temp,
                                        sname,
                                        signed_info,
-									   xferStart,
+				       xferStart,
                                        CCN_CHUNK_SIZE,
                                        NULL,
                                        ccn_keystore_private_key(me->keystore));
@@ -735,12 +750,12 @@ new_interests(struct ccn_closure *selfp,
     Gstccnxsink *me = GST_CCNXSINK (selfp->data);
     struct ccn_charbuf* cb;
 	struct ccn_charbuf* sname = NULL;
-    const char *cp1, *cp2;
-    int sz1;
-	size_t sz2;
+    const unsigned char *cp1, *cp2;
+    size_t sz1;
+    size_t sz2;
     long lastSeq;
     struct ccn_signing_params myparams;
-    int i;
+    unsigned int i;
     int rc;
 
 
@@ -758,10 +773,11 @@ new_interests(struct ccn_closure *selfp,
       size_t sz;
       GST_DEBUG ( "%3d: ", i);
       if( 0 > ccn_name_comp_get( info->interest_ccnb, info->interest_comps, i, &cp, &sz ) ) {
-        fprintf(stderr, "could not get comp\n");
+        // fprintf(stderr, "could not get comp\n");
         break;
-      } else
-        hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
+      } else {
+        // hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
+      }
     }
  
     switch (kind) {
@@ -816,7 +832,7 @@ new_interests(struct ccn_closure *selfp,
 			cp1 = NULL;
 			break;
 		  } else {
-			  if( ! strncmp( cp1, "_meta_", 6 ) ) { // OK, found meta, now which one is needed?
+			  if( ! strncmp( (const char*)cp1, "_meta_", 6 ) ) { // OK, found meta, now which one is needed?
 				  if( 0 > ccn_name_comp_get( info->interest_ccnb, info->interest_comps, i+1, &cp2, &sz2 ) ) {
 					GST_LOG_OBJECT(me, "CCN interest received with invalid meta request");
 					cp1 = NULL;
@@ -827,9 +843,9 @@ new_interests(struct ccn_closure *selfp,
 		} // At this point, i is left pointing at '_meta_' or at the end of component list
 
         if( cp1 ) {
-          hDump( DUMP_ADDR(cp1), DUMP_SIZE(sz1) );
-          hDump( DUMP_ADDR(cp2), DUMP_SIZE(sz2) );
-          if( strncmp( cp2, ".segment", 8 ) ) goto Exit_Interest; /* not a match */
+          // hDump( DUMP_ADDR(cp1), DUMP_SIZE(sz1) );
+          // hDump( DUMP_ADDR(cp2), DUMP_SIZE(sz2) );
+          if( strncmp( (const char*)cp2, ".segment", 8 ) ) goto Exit_Interest; /* not a match */
 
           /* publish what segment we are up to in reply to the meta request */
           lastSeq = me->segment - 1;
@@ -845,14 +861,14 @@ new_interests(struct ccn_closure *selfp,
           me->temp->length=0;
           rc = ccn_sign_content(me->ccn, me->temp, sname, &myparams,
                           &lastSeq, sizeof(lastSeq));
-          hDump(DUMP_ADDR(sname->buf), DUMP_SIZE(sname->length));
+          // hDump(DUMP_ADDR(sname->buf), DUMP_SIZE(sname->length));
           if (rc != 0) {
               GST_LOG_OBJECT(me, "Failed to encode ContentObject (rc == %d)\n", rc);
               goto Error_Interest;
           }
           
           GST_INFO("sending meta data...");
-		  hDump(DUMP_ADDR(me->temp->buf), DUMP_SIZE(me->temp->length));
+		  // hDump(DUMP_ADDR(me->temp->buf), DUMP_SIZE(me->temp->length));
           rc = ccn_put(me->ccn, me->temp->buf, me->temp->length);
           me->temp->length = 0;
           if (rc < 0) {
@@ -964,7 +980,7 @@ check_fifo(Gstccnxsink* me) {
 
   for( i=0; i<3; ++i ) {
 	if( fifo_empty(me) ) return;
-	buffer = fifo_pop(me);
+	if( ! (buffer = fifo_pop(me)) ) return;
 	size = GST_BUFFER_SIZE (buffer);
 	data = GST_BUFFER_DATA (buffer);
 	ts = 0;
@@ -1025,7 +1041,7 @@ ccn_event_thread(void *data) {
   
   /* This call will set up a handler for interests we expect to get from clients */
 
-  hDump(DUMP_ADDR(filtName->buf), DUMP_SIZE(filtName->length));
+  // hDump(DUMP_ADDR(filtName->buf), DUMP_SIZE(filtName->length));
   ccn_set_interest_filter(me->ccn, filtName, me->ccn_closure);
   GST_DEBUG ("CCNxSink event: interest filter registered\n");
 
@@ -1045,7 +1061,7 @@ ccn_event_thread(void *data) {
       if (res < 0 && ccn_get_connection_fd(me->ccn) == -1) {
           GST_DEBUG ("CCNxSink event: need to reconnect...");
           /* Try reconnecting, after a bit of delay */
-          msleep((30 + (pid() % 30)) * 1000);
+          msleep((30 + (getpid() % 30)) * 1000);
           res = ccn_connect(me->ccn, ccndHost() );
       }
   }
@@ -1126,7 +1142,7 @@ gst_ccnxsink_stop (GstBaseSink * bsink)
 {
   Gstccnxsink *me = GST_CCNXSINK (bsink);
   
-  // fifo_put( me, me->buf, TRUE );
+  if(me->buf) fifo_put( me, me->buf, TRUE );
 
   GST_DEBUG ("stopping, closing connections");
 

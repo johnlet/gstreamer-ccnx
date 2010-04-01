@@ -59,7 +59,7 @@
 
 char* ccndHost();
 
-int loadKey( struct ccn *ccn, struct ccn_signing_params *sp );
+int loadKey( struct ccn *ccn, const struct ccn_signing_params *sp );
 
 struct ccn_keystore* fetchStore();
 
