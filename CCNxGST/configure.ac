@@ -59,7 +59,7 @@ AC_CHECK_PROG(HAVE_PKGCONFIG, pkg-config, yes, no)
 
 dnl Give error and exit if we don't have pkgconfig
 if test "x$HAVE_PKGCONFIG" = "xno"; then
-  AC_MSG_ERROR(you need to have pkgconfig installed !)
+  AC_MSG_ERROR(you need to have pkgconfig installed!)
 fi
 
 dnl Now we're ready to ask for gstreamer libs and cflags
@@ -72,7 +72,7 @@ PKG_CHECK_MODULES(GST, \
 
 dnl Give error and exit if we don't have gstreamer
 if test "x$HAVE_GST" = "xno"; then
-  AC_MSG_ERROR(you need gstreamer development packages installed !)
+  AC_MSG_ERROR(you need gstreamer development packages installed!)
 fi
 
 dnl append GST_ERROR cflags to GST_CFLAGS
@@ -140,7 +140,7 @@ AM_CONDITIONAL([HAVE_DOXYGEN],[test -n "$DOXYGEN"])
 
 # Have CCNx dir?
 if test -z "$CCN_DIR"; then
-  AC_MSG_ERROR(you need to specify where CCNx is installed !)
+  AC_MSG_ERROR(you need to specify where CCNx is installed!)
 fi
 CCN_CPP_FLAGS="-I$CCN_DIR/include"
 CCN_LDFLAGS="-L$CCN_DIR/lib"
