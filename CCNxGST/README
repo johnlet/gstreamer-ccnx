@@ -1,47 +1,61 @@
 WHAT IT IS
 ==========
 
-This code contains a GStreamer Plug-in used to transport media traffic over a CCNx network.
-It can be compiled in an MSVC environment for Windows, or autotools for Linux.
-Within the solution is a single project, CCNxPlug that contains the 2 elements needed for the plug-in:
-- ccnxsrc, which reads packets from the network and feeds them to the GStreamer pipeline
-- ccnxsink, which sits at the end of the pipeline to publish packets onto the network
+This code contains a GStreamer Plug-in used to transport media traffic
+over a CCNx network.
+
+It can be compiled in an MSVC environment for Windows, or autotools
+for Linux.  Within the solution is a single project, CCNxPlug that
+contains the 2 elements needed for the plug-in:
+  - ccnxsrc, which reads packets from the network and feeds them to the
+    GStreamer pipeline
+  - ccnxsink, which sits at the end of the pipeline to publish packets
+    onto the network
 
 Downloading
 ===========
-This project can be cloned with git to your local machine. It is not important where you create the
-copy on your machine.
+
+This project can be cloned with git to your local machine. It is not
+important where you create the copy on your machine.
 
 For building instructions, see the INSTALL file.
 
 Using the Plugin
 ================
-First an environment variable must be set to tell the elements where the CCNx router can be found.
-See the example below.
-Next, another environment variable is needed to indicate where the GStreamer plug-in is located;
-again, see below.
 
-The two elements take an attribute 'uri'. The sink element will produce its content using that prefix,
-and the source element will express interest in content with that prefix.
+First an environment variable must be set to tell the elements where
+the CCNx router can be found. See the example below.
+
+Next, another environment variable is needed to indicate where the
+GStreamer plug-in is located; again, see below.
+
+The two elements take an attribute 'uri'. The sink element will
+produce its content using that prefix, and the source element will
+express interest in content with that prefix.
 
 Example streaming data from a camera out to the ccnx network:
-CCND_HOST=gryffindor.research.bell-labs.com
-GST_PLUGIN_PATH=<prefix>/lib/gstreamer-0.10
-export CCND_HOST GST_PLUGIN_PATH
+
+    CCND_HOST=gryffindor.research.bell-labs.com
+    GST_PLUGIN_PATH=<prefix>/lib/gstreamer-0.10
+    export CCND_HOST GST_PLUGIN_PATH
 gst_launch dshowvideosrc ! video/x-raw-yuv, width=320, height=240, framerate=20/1 ! ffmpegcolorspace ! theoraenc ! oogmux ! ccnsink uri=ccnx:///windows/1
 
-NOTE: the uri must have protocol ccnx, and the extra slashes to get past the shell interpreter in windows.
+NOTE: the uri must have protocol ccnx, and the extra slashes to get
+past the shell interpreter in windows.
 In Linux, uri=ccnx:/windows/1 would be sufficient.
 
 To view this video stream using the source element:
-CCND_HOST=gryffindor.research.bell-labs.com
-GST_PLUGIN_PATH=<prefix>/lib/gstreamer-0.10
-export CCND_HOST GST_PLUGIN_PATH
-gst-launch ccnxsrc uri=ccnx:///windows/1 ! decodebin ! ffmpegcolorspace ! dshowvideosink
+    CCND_HOST=gryffindor.research.bell-labs.com
+    GST_PLUGIN_PATH=<prefix>/lib/gstreamer-0.10
+    export CCND_HOST GST_PLUGIN_PATH
+    gst-launch ccnxsrc uri=ccnx:///windows/1 ! decodebin ! ffmpegcolorspace ! dshowvideosink
 
-In both examples, the elements will default to using the user's RSA keys found in $HOME/.ccnx/
-If you desire to use another keystore, set these two additional environment variables before launching:
-CCN_KEYSTORE=<path to keystore file>
-CCN_PASSPHRASE=<password to unlock the keystore>
-export CCN_KEYSTORE CCN_PASSPHRASE
+In both examples, the elements will default to using the user's RSA
+keys found in $HOME/.ccnx/
+
+If you desire to use another keystore, set these two additional
+environment variables before launching:
+    CCN_KEYSTORE=<path to keystore file>
+    CCN_PASSPHRASE=<password to unlock the keystore>
+    export CCN_KEYSTORE CCN_PASSPHRASE
 

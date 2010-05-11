@@ -1,8 +1,11 @@
 
 CCNxGST:
-This code contains a GStreamer Plug-in used to transport media traffic over a CCNx network.
-It can be compiled in an MSVC environment for Windows, or autotools for Linux.
-Within the solution is a single project, CCNxPlug that contains the 2 elements needed for the plug-in:
-- ccnxsrc, which reads packets from the network and feeds them to the GStreamer pipeline
-- ccnxsink, which sits at the end of the pipeline to publish packets onto the network
-See its local README file for additional details.
+
+This code contains a GStreamer Plug-in used to transport media traffic
+over a CCNx network.  It can be compiled in an MSVC environment for
+Windows, or autotools for Linux.  Within the solution is a single
+project, CCNxPlug that contains the 2 elements needed for the plug-in:
+- ccnxsrc, which reads packets from the network and feeds them to the
+GStreamer pipeline - ccnxsink, which sits at the end of the pipeline
+to publish packets onto the network See its local README file for
+additional details.
