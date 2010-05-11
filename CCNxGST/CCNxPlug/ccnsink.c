@@ -98,18 +98,18 @@ enum
  *
  */
 static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
-                                                /**< Name of the element */
-    GST_PAD_SINK,                       /**< Type of element, a sink */
-    GST_PAD_ALWAYS,                     /**< We always have this PAD */
+                                /**< Name of the element */
+    GST_PAD_SINK,               /**< Type of element, a sink */
+    GST_PAD_ALWAYS,             /**< We always have this PAD */
     GST_STATIC_CAPS_ANY);       /**< We can accept any kind of input */
 
 /**
  * Describe the details for the GST tools to print and such.
  */
 static const GstElementDetails gst_ccnxsink_details = GST_ELEMENT_DETAILS ("CCNX data sink",
-                                                                        /**< Terse description */
-    "Source/Network",                                                   /**< \todo ??? */
-    "Publish data over a CCNx network",                 /**< Long description */
+                                                   /**< Terse description */
+    "Source/Network",                              /**< \todo ??? */
+    "Publish data over a CCNx network",            /**< Long description */
     "John Letourneau <topgun@bell-labs.com");      /**< Author contact information */
 
 /**
@@ -1015,9 +1015,9 @@ check_fifo (Gstccnxsink * me)
 
 }
 
-static GstTask *eventTask;                              /**< -> to a GST task structure */
-static GMutex *eventLock;                               /**< -> a lock that helps control the task */
-static GCond *eventCond;                                /**< -> a condition structure to help with synchronization */
+static GstTask *eventTask;                      /**< -> to a GST task structure */
+static GMutex *eventLock;                       /**< -> a lock that helps control the task */
+static GCond *eventCond;                        /**< -> a condition structure to help with synchronization */
 static GStaticRecMutex task_mutex               /**< I forget why we use this in this way */
     = G_STATIC_REC_MUTEX_INIT;
 

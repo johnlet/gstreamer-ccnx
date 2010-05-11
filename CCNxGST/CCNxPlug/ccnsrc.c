@@ -98,9 +98,9 @@ enum
  */
 enum
 {
-  PROP_0                        /**< Invalid property */
-      , PROP_URI        /**< URI property */
-      , PROP_SILENT     /**< Silent operation property */
+  PROP_0,         /**< Invalid property */
+  PROP_URI,       /**< URI property */
+  PROP_SILENT     /**< Silent operation property */
 };
 
 /**
