@@ -98,30 +98,28 @@ enum
  */
 enum
 {
-  PROP_0			/**< Invalid property */
-  , PROP_URI		/**< URI property */
-  , PROP_SILENT		/**< Silent operation property */
+  PROP_0                        /**< Invalid property */
+      , PROP_URI        /**< URI property */
+      , PROP_SILENT     /**< Silent operation property */
 };
 
 /**
  * Capabilities of the input source.
  *
  */
-static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE (
-	"src",					/* name of the element */
-    GST_PAD_SRC,			/* type of pad provided */
-    GST_PAD_ALWAYS,			/* lifetime of the pad */
-    GST_STATIC_CAPS_ANY		/* kinds of things that this pad produces */
+static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",       /* name of the element */
+    GST_PAD_SRC,                /* type of pad provided */
+    GST_PAD_ALWAYS,             /* lifetime of the pad */
+    GST_STATIC_CAPS_ANY         /* kinds of things that this pad produces */
     );
 
 /**
  * Describe the details for the GST tools to print and such.
  */
-static const GstElementDetails gst_ccnxsrc_details = GST_ELEMENT_DETAILS(
-	"CCNX interest source",				/* terse description of the element */
-	"Source/Network",					/* \todo ?? */
-	"Receive data over a CCNx network via interests being sent out", /* full description */
-	"John Letourneau <topgun@bell-labs.com>" ); /* Author and contact information */
+static const GstElementDetails gst_ccnxsrc_details = GST_ELEMENT_DETAILS ("CCNX interest source",       /* terse description of the element */
+    "Source/Network",           /* \todo ?? */
+    "Receive data over a CCNx network via interests being sent out",    /* full description */
+    "John Letourneau <topgun@bell-labs.com>");  /* Author and contact information */
 
 /**
  * Uses this port if no other port is specified
@@ -141,15 +139,17 @@ static const GstElementDetails gst_ccnxsrc_details = GST_ELEMENT_DETAILS(
 /*
  * Several call-back function prototypes needed in the code below
  */
-static void gst_ccnxsrc_uri_handler_init (gpointer g_iface, gpointer iface_data);
+static void gst_ccnxsrc_uri_handler_init (gpointer g_iface,
+    gpointer iface_data);
 
 static void gst_ccnxsrc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_ccnxsrc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static GstCaps * gst_ccnxsrc_getcaps (GstBaseSrc * src);
+static GstCaps *gst_ccnxsrc_getcaps (GstBaseSrc * src);
 
-static GstFlowReturn gst_ccnxsrc_create (GstBaseSrc * psrc, guint64 offset, guint size, GstBuffer ** buf);
+static GstFlowReturn gst_ccnxsrc_create (GstBaseSrc * psrc, guint64 offset,
+    guint size, GstBuffer ** buf);
 
 static gboolean gst_ccnxsrc_start (GstBaseSrc * bsrc);
 
@@ -159,8 +159,8 @@ static gboolean gst_ccnxsrc_unlock (GstBaseSrc * bsrc);
 
 static gboolean gst_ccnxsrc_unlock_stop (GstBaseSrc * bsrc);
 
-static enum ccn_upcall_res incoming_content(struct ccn_closure *selfp, enum ccn_upcall_kind kind,
-                 struct ccn_upcall_info *info);
+static enum ccn_upcall_res incoming_content (struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind, struct ccn_upcall_info *info);
 
 static void gst_ccnxsrc_finalize (GObject * object);
 
@@ -222,12 +222,10 @@ static void
 gst_ccnxsrc_base_init (gpointer gclass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (gclass);
-  
-  GST_DEBUG_CATEGORY_INIT (gst_ccnxsrc_debug, "ccnxsrc",
-      0, "CCNx src");
 
-  gst_element_class_set_details(element_class,
-     &gst_ccnxsrc_details);
+  GST_DEBUG_CATEGORY_INIT (gst_ccnxsrc_debug, "ccnxsrc", 0, "CCNx src");
+
+  gst_element_class_set_details (element_class, &gst_ccnxsrc_details);
 
   gst_element_class_add_pad_template (element_class,
       gst_static_pad_template_get (&src_factory));
@@ -249,8 +247,8 @@ gst_ccnxsrc_class_init (GstccnxsrcClass * klass)
 {
   GObjectClass *gobject_class;
   GstBaseSrcClass *gstbasesrc_class;
-  
-	GST_DEBUG("CCNxSrc: class init");
+
+  GST_DEBUG ("CCNxSrc: class init");
 
   gobject_class = (GObjectClass *) klass;
   gstbasesrc_class = (GstBaseSrcClass *) klass;
@@ -262,8 +260,9 @@ gst_ccnxsrc_class_init (GstccnxsrcClass * klass)
 
   /* Register these properties, their names, and their help information */
   g_object_class_install_property (gobject_class, PROP_URI,
-      g_param_spec_string ("uri", "URI", "URI of the form: ccnx://<content name>",
-          CCNX_DEFAULT_URI, G_PARAM_READWRITE));
+      g_param_spec_string ("uri", "URI",
+          "URI of the form: ccnx://<content name>", CCNX_DEFAULT_URI,
+          G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_SILENT,
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
@@ -275,7 +274,7 @@ gst_ccnxsrc_class_init (GstccnxsrcClass * klass)
   gstbasesrc_class->unlock = gst_ccnxsrc_unlock;
   gstbasesrc_class->unlock_stop = gst_ccnxsrc_unlock_stop;
   gstbasesrc_class->get_caps = gst_ccnxsrc_getcaps;
-  gstbasesrc_class->create = gst_ccnxsrc_create; // Here in particular is the function used when the pipeline wants more data
+  gstbasesrc_class->create = gst_ccnxsrc_create;        // Here in particular is the function used when the pipeline wants more data
 }
 
 /**
@@ -290,29 +289,30 @@ gst_ccnxsrc_class_init (GstccnxsrcClass * klass)
  */
 static void
 gst_ccnxsrc_init (Gstccnxsrc * me,
-    /*@unused@*/ GstccnxsrcClass * gclass)
+    /*@unused@ */ GstccnxsrcClass * gclass)
 {
-	gint i;
+  gint i;
 
   me->srcpad = gst_pad_new_from_static_template (&src_factory, "src");
   gst_pad_set_getcaps_function (me->srcpad,
-                                GST_DEBUG_FUNCPTR(gst_pad_proxy_getcaps));
+      GST_DEBUG_FUNCPTR (gst_pad_proxy_getcaps));
 
   gst_element_add_pad (GST_ELEMENT (me), me->srcpad);
 
   me->silent = FALSE;
-  me->uri = g_strdup(CCNX_DEFAULT_URI);
+  me->uri = g_strdup (CCNX_DEFAULT_URI);
   me->fifo_head = 0;
   me->fifo_tail = 0;
   me->intWindow = 0;
-  me->intStates = calloc( CCN_WINDOW_SIZE, sizeof(CcnxInterestState) ); /* init the array of outstanding states */
-  for( i=0; i<CCN_WINDOW_SIZE; ++i ) me->intStates[i].state = OInterest_idle;
+  me->intStates = calloc (CCN_WINDOW_SIZE, sizeof (CcnxInterestState)); /* init the array of outstanding states */
+  for (i = 0; i < CCN_WINDOW_SIZE; ++i)
+    me->intStates[i].state = OInterest_idle;
   me->i_pos = 0;
   me->i_bufoffset = 0;
-  me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
+  me->buf = gst_buffer_new_and_alloc (CCN_FIFO_BLOCK_SIZE);
 
-  gst_base_src_set_format( GST_BASE_SRC(me), GST_FORMAT_TIME );
-  gst_base_src_set_do_timestamp( GST_BASE_SRC(me), TRUE );
+  gst_base_src_set_format (GST_BASE_SRC (me), GST_FORMAT_TIME);
+  gst_base_src_set_do_timestamp (GST_BASE_SRC (me), TRUE);
 }
 
 /**
@@ -344,7 +344,7 @@ gst_ccnxsrc_set_uri (Gstccnxsrc * me, const gchar * uri)
 
   /* Free the old value before setting to the new attribute value */
   g_free (me->uri);
-  me->uri = g_strdup(uri);
+  me->uri = g_strdup (uri);
 
   return TRUE;
 
@@ -378,10 +378,10 @@ gst_ccnxsrc_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_URI:
       g_free (me->uri);
-      if( g_value_get_string (value) == NULL )
-        me->uri = g_strdup(CCNX_DEFAULT_URI);
+      if (g_value_get_string (value) == NULL)
+        me->uri = g_strdup (CCNX_DEFAULT_URI);
       else
-        me->uri = g_value_dup_string(value);
+        me->uri = g_value_dup_string (value);
       break;
     case PROP_SILENT:
       me->silent = g_value_get_boolean (value);
@@ -408,7 +408,7 @@ gst_ccnxsrc_get_property (GObject * object, guint prop_id,
 
   switch (prop_id) {
     case PROP_URI:
-      g_value_set_string(value, me->uri);
+      g_value_set_string (value, me->uri);
       break;
     case PROP_SILENT:
       g_value_set_boolean (value, me->silent);
@@ -462,7 +462,8 @@ gst_ccnxsrc_getcaps (GstBaseSrc * src)
  * \param obj		element context to have its resources released
  */
 static void
-gst_ccnxsrc_finalize(GObject *obj) {
+gst_ccnxsrc_finalize (GObject * obj)
+{
 
   Gstccnxsrc *me;
 
@@ -503,26 +504,28 @@ sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
  * \return pointer to the available state slot, NULL if none found
  */
 /*@null@*/
-static CcnxInterestState*
-allocInterestState( Gstccnxsrc* me ) {
-	CcnxInterestState* ans = NULL;
-	gint i;
+static CcnxInterestState *
+allocInterestState (Gstccnxsrc * me)
+{
+  CcnxInterestState *ans = NULL;
+  gint i;
 
-	if( NULL == me ) return ans;
+  if (NULL == me)
+    return ans;
 
-	for( i=0; i<CCN_WINDOW_SIZE; ++i ) {
-		if( OInterest_idle == me->intStates[i].state ) {
-			ans = &(me->intStates[i]);
-			ans->data = NULL;
-			ans->seg = -1;
-			ans->size = 0;
-			ans->timeouts = 0;
-			ans->lastBlock = FALSE;
-			me->intWindow++;
-			break;
-		}
-	}
-	return ans;
+  for (i = 0; i < CCN_WINDOW_SIZE; ++i) {
+    if (OInterest_idle == me->intStates[i].state) {
+      ans = &(me->intStates[i]);
+      ans->data = NULL;
+      ans->seg = -1;
+      ans->size = 0;
+      ans->timeouts = 0;
+      ans->lastBlock = FALSE;
+      me->intWindow++;
+      break;
+    }
+  }
+  return ans;
 }
 
 /**
@@ -535,14 +538,17 @@ allocInterestState( Gstccnxsrc* me ) {
  * \param is		state slot to be released
  */
 static void
-freeInterestState( Gstccnxsrc *me, CcnxInterestState* is ) {
-	if( NULL == me || NULL == is ) return;
-	/* free buffers, potentially */
-	if( is->data ) free( is->data );
-	is->size = 0;
-	is->seg = -1;
-	is->state = OInterest_idle;
-	me->intWindow--;
+freeInterestState (Gstccnxsrc * me, CcnxInterestState * is)
+{
+  if (NULL == me || NULL == is)
+    return;
+  /* free buffers, potentially */
+  if (is->data)
+    free (is->data);
+  is->size = 0;
+  is->seg = -1;
+  is->state = OInterest_idle;
+  me->intWindow--;
 }
 
 /**
@@ -555,15 +561,18 @@ freeInterestState( Gstccnxsrc *me, CcnxInterestState* is ) {
  * \return pointer to the state entry holding that segment, NULL if not found
  */
 /*@null@*/
-static CcnxInterestState*
-fetchSegmentInterest( Gstccnxsrc* me, uintmax_t seg ) {
-	gint i;
+static CcnxInterestState *
+fetchSegmentInterest (Gstccnxsrc * me, uintmax_t seg)
+{
+  gint i;
 
-	if( NULL == me ) return NULL;
+  if (NULL == me)
+    return NULL;
 
-	for( i=0; i<CCN_WINDOW_SIZE; ++i )
-		if( seg == me->intStates[i].seg && OInterest_idle != me->intStates[i].state ) return &(me->intStates[i]);
-	return NULL;
+  for (i = 0; i < CCN_WINDOW_SIZE; ++i)
+    if (seg == me->intStates[i].seg && OInterest_idle != me->intStates[i].state)
+      return &(me->intStates[i]);
+  return NULL;
 }
 
 /**
@@ -584,26 +593,29 @@ fetchSegmentInterest( Gstccnxsrc* me, uintmax_t seg ) {
  * \retval N>seg	if a gap exists between what was asked for and what we have
  */
 /*@null@*/
-static CcnxInterestState*
-nextSegmentInterest( Gstccnxsrc* me, uintmax_t seg ) {
-	gint				i;
-	uintmax_t			best;
-	CcnxInterestState	*ans = NULL;
+static CcnxInterestState *
+nextSegmentInterest (Gstccnxsrc * me, uintmax_t seg)
+{
+  gint i;
+  uintmax_t best;
+  CcnxInterestState *ans = NULL;
 
-	if( NULL == me ) return NULL;
+  if (NULL == me)
+    return NULL;
 
-	best = 0;
-	best--;
-	for( i=0; i<CCN_WINDOW_SIZE; ++i ) {
-		if( OInterest_idle != me->intStates[i].state ) {
-			if( seg == me->intStates[i].seg ) return &(me->intStates[i]);
-			if( best > me->intStates[i].seg ) {
-				ans = &(me->intStates[i]);
-				best = ans->seg;
-			}
-		}
-	}
-	return ans;
+  best = 0;
+  best--;
+  for (i = 0; i < CCN_WINDOW_SIZE; ++i) {
+    if (OInterest_idle != me->intStates[i].state) {
+      if (seg == me->intStates[i].seg)
+        return &(me->intStates[i]);
+      if (best > me->intStates[i].seg) {
+        ans = &(me->intStates[i]);
+        best = ans->seg;
+      }
+    }
+  }
+  return ans;
 }
 
 /**
@@ -619,23 +631,24 @@ nextSegmentInterest( Gstccnxsrc* me, uintmax_t seg ) {
  * \return status value from the express call made to CCN
  */
 static gint
-request_segment( Gstccnxsrc* me, uintmax_t seg ) {
+request_segment (Gstccnxsrc * me, uintmax_t seg)
+{
   struct ccn_charbuf *nm = NULL;
   gint rc = 0;
 
-  if( NULL == me ) return -1;
+  if (NULL == me)
+    return -1;
 
   // nm = sequenced_name(me->p_name, seg);
-  nm = ccn_charbuf_create();
-  rc |= ccn_charbuf_append_charbuf(nm, me->p_name);
-  rc |= ccn_name_append_numeric(nm, CCN_MARKER_SEQNUM, seg);
-  
+  nm = ccn_charbuf_create ();
+  rc |= ccn_charbuf_append_charbuf (nm, me->p_name);
+  rc |= ccn_name_append_numeric (nm, CCN_MARKER_SEQNUM, seg);
+
   GST_INFO ("reqseg - name for interest...");
   // hDump(nm->buf, nm->length);
-  rc |= ccn_express_interest(me->ccn, nm, me->ccn_closure,
-                               me->p_template);
-  ccn_charbuf_destroy(&nm);
-  if( rc < 0 ) {
+  rc |= ccn_express_interest (me->ccn, nm, me->ccn_closure, me->p_template);
+  ccn_charbuf_destroy (&nm);
+  if (rc < 0) {
     return rc;
   }
 
@@ -650,8 +663,9 @@ request_segment( Gstccnxsrc* me, uintmax_t seg ) {
  * \return true if the fifo is empty, false otherwise
  */
 static gboolean
-fifo_empty( Gstccnxsrc* me ) {
-    return me->fifo_head == me->fifo_tail;
+fifo_empty (Gstccnxsrc * me)
+{
+  return me->fifo_head == me->fifo_tail;
 }
 
 /**
@@ -672,23 +686,25 @@ fifo_empty( Gstccnxsrc* me ) {
  * \return true if the put succeeded, false otherwise
  */
 static gboolean
-fifo_put(  Gstccnxsrc* me, GstBuffer *buf ) {
-    int next;
-        GST_DEBUG("FIFO: putting");
-    next = me->fifo_tail;
-    if( ++next >= CCNX_SRC_FIFO_MAX ) next = 0;
-    if( next  == me->fifo_head ) {
-        g_mutex_lock( me->fifo_lock );
-        while( next  == me->fifo_head ) {
-            GST_DEBUG("FIFO: queue is full");
-            g_cond_wait( me->fifo_cond, me->fifo_lock );
-        }
-        g_mutex_unlock( me->fifo_lock );
-        GST_DEBUG("FIFO: queue is OK");
+fifo_put (Gstccnxsrc * me, GstBuffer * buf)
+{
+  int next;
+  GST_DEBUG ("FIFO: putting");
+  next = me->fifo_tail;
+  if (++next >= CCNX_SRC_FIFO_MAX)
+    next = 0;
+  if (next == me->fifo_head) {
+    g_mutex_lock (me->fifo_lock);
+    while (next == me->fifo_head) {
+      GST_DEBUG ("FIFO: queue is full");
+      g_cond_wait (me->fifo_cond, me->fifo_lock);
     }
-    me->fifo[ me->fifo_tail ] = buf;
-    me->fifo_tail = next;
-    return TRUE;
+    g_mutex_unlock (me->fifo_lock);
+    GST_DEBUG ("FIFO: queue is OK");
+  }
+  me->fifo[me->fifo_tail] = buf;
+  me->fifo_tail = next;
+  return TRUE;
 }
 
 /**
@@ -704,28 +720,30 @@ fifo_put(  Gstccnxsrc* me, GstBuffer *buf ) {
  * \param me		element context where the fifo is kept
  * \return buffer containing the next element, NULL if the queue is empty
  */
-static GstBuffer*
-fifo_pop(  Gstccnxsrc* me ) {
-    GstBuffer* ans;
-    int next;
-        GST_DEBUG("FIFO: popping");
-    if( fifo_empty (me) ) {
-      return NULL;
-    }
-    next = me->fifo_head;
-    ans = me->fifo[next];
-    if( ++next >= CCNX_SRC_FIFO_MAX ) next = 0;
-    g_mutex_lock( me->fifo_lock );
-    me->fifo_head = next;
-    g_cond_signal( me->fifo_cond );
-    g_mutex_unlock( me->fifo_lock );
-    return ans;
+static GstBuffer *
+fifo_pop (Gstccnxsrc * me)
+{
+  GstBuffer *ans;
+  int next;
+  GST_DEBUG ("FIFO: popping");
+  if (fifo_empty (me)) {
+    return NULL;
+  }
+  next = me->fifo_head;
+  ans = me->fifo[next];
+  if (++next >= CCNX_SRC_FIFO_MAX)
+    next = 0;
+  g_mutex_lock (me->fifo_lock);
+  me->fifo_head = next;
+  g_cond_signal (me->fifo_cond);
+  g_mutex_unlock (me->fifo_lock);
+  return ans;
 }
 
-static GstTask	*eventTask;				/**< -> to a GST task structure */
-static GMutex	*eventLock;				/**< -> a lock that helps control the task */
-static GCond	*eventCond;				/**< -> a condition structure to help with synchronization */
-static GStaticRecMutex	task_mutex = G_STATIC_REC_MUTEX_INIT; /**< I forget why we use this in this way */
+static GstTask *eventTask;                              /**< -> to a GST task structure */
+static GMutex *eventLock;                               /**< -> a lock that helps control the task */
+static GCond *eventCond;                                /**< -> a condition structure to help with synchronization */
+static GStaticRecMutex task_mutex = G_STATIC_REC_MUTEX_INIT;  /**< I forget why we use this in this way */
 
 /**
  * Base loop for the background CCN task
@@ -737,23 +755,24 @@ static GStaticRecMutex	task_mutex = G_STATIC_REC_MUTEX_INIT; /**< I forget why w
  * \param data		the task context information setup by the parent sink element thread
  */
 static void
-ccn_event_thread(void *data) {
-    Gstccnxsrc* src = (Gstccnxsrc*) data;
-    struct ccn *ccn = src->ccn;
-    int res = 0;
+ccn_event_thread (void *data)
+{
+  Gstccnxsrc *src = (Gstccnxsrc *) data;
+  struct ccn *ccn = src->ccn;
+  int res = 0;
 
-    GST_DEBUG ("*** event thread starting");
+  GST_DEBUG ("*** event thread starting");
   /* We pass control to ccnx for a while so it can work with any incoming or outgoing data */
   /* We check to see if any problems have caused our ccnd connection to fail, and we reconnect */
-    while (res >= 0) {
-        res = ccn_run(ccn, 1000);
-        if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
-            /* Try reconnecting, after a bit of delay */
-            msleep((30 + (getpid() % 30)) * 1000);
-            res = ccn_connect(ccn, ccndHost());
-        }
+  while (res >= 0) {
+    res = ccn_run (ccn, 1000);
+    if (res < 0 && ccn_get_connection_fd (ccn) == -1) {
+      /* Try reconnecting, after a bit of delay */
+      msleep ((30 + (getpid () % 30)) * 1000);
+      res = ccn_connect (ccn, ccndHost ());
     }
-    GST_DEBUG ("*** event thread ending");
+  }
+  GST_DEBUG ("*** event thread ending");
 }
 
 /**
@@ -774,27 +793,28 @@ ccn_event_thread(void *data) {
  * \retval GST_FLOW_ERROR something bad has happened
  */
 static GstFlowReturn
-gst_ccnxsrc_create (GstBaseSrc * psrc, /*@unused@*/ guint64 offset, /*@unused@*/ guint size, GstBuffer ** buf)
+gst_ccnxsrc_create (GstBaseSrc * psrc, /*@unused@ */ guint64 offset,
+    /*@unused@ */ guint size, GstBuffer ** buf)
 {
   Gstccnxsrc *me;
   gboolean looping = TRUE;
-  GstBuffer* ans = NULL;
+  GstBuffer *ans = NULL;
   me = GST_CCNXSRC (psrc);
   GST_DEBUG ("create called");
 
-  while( looping ) {
-  GST_DEBUG ("create looping");
-    if( fifo_empty(me) ) {
-      msleep(50);
+  while (looping) {
+    GST_DEBUG ("create looping");
+    if (fifo_empty (me)) {
+      msleep (50);
     } else {
-      ans = fifo_pop(me);
+      ans = fifo_pop (me);
       looping = FALSE;
     }
   }
 
-  if( ans ) {
+  if (ans) {
     guint sz;
-    sz = GST_BUFFER_SIZE(ans);
+    sz = GST_BUFFER_SIZE (ans);
     GST_LOG_OBJECT (me, "got some data %d", sz);
     *buf = ans;
   } else {
@@ -822,46 +842,46 @@ gst_ccnxsrc_create (GstBaseSrc * psrc, /*@unused@*/ guint64 offset, /*@unused@*/
  * \return the segment number to ask for first, 0 on timeout
  */
 static uintmax_t *
-get_segment(struct ccn *h, struct ccn_charbuf *name, int timeout)
+get_segment (struct ccn *h, struct ccn_charbuf *name, int timeout)
 {
-    struct ccn_charbuf *hn;
-    uintmax_t *result = NULL;
-    int res = 0;
+  struct ccn_charbuf *hn;
+  uintmax_t *result = NULL;
+  int res = 0;
 
   GST_INFO ("get_segment step 1");
-    hn = ccn_charbuf_create();
-	// ccn_name_append_components(hn, name->buf, 0, name->length );
-    ccn_charbuf_append_charbuf(hn, name);
-	ccn_name_from_uri(hn, "_meta_/.segment");
-    // ccn_name_append_str(hn, "_meta_");
-    // ccn_name_append_str(hn, ".segment");
+  hn = ccn_charbuf_create ();
+  // ccn_name_append_components(hn, name->buf, 0, name->length );
+  ccn_charbuf_append_charbuf (hn, name);
+  ccn_name_from_uri (hn, "_meta_/.segment");
+  // ccn_name_append_str(hn, "_meta_");
+  // ccn_name_append_str(hn, ".segment");
   GST_INFO ("get_segment step 2");
-    // res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
+  // res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
   GST_INFO ("get_segment step 3, res: %d", res);
-    if (res == 0) {
-        struct ccn_charbuf *ho = ccn_charbuf_create();
-        struct ccn_parsed_ContentObject pcobuf = { 0 };
-        const unsigned char *hc;
-        size_t hcs;
+  if (res == 0) {
+    struct ccn_charbuf *ho = ccn_charbuf_create ();
+    struct ccn_parsed_ContentObject pcobuf = { 0 };
+    const unsigned char *hc;
+    size_t hcs;
 
-        // hDump(DUMP_ADDR(hn->buf), DUMP_SIZE(hn->length));
-  GST_INFO ("get_segment step 10");
-        res = ccn_get(h, hn, NULL, timeout, ho, &pcobuf, NULL, 0);
-  GST_INFO ("get_segment step 11, res: %d", res);
-        if (res >= 0) {
-            hc = ho->buf;
-            hcs = ho->length;
-            // hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
-            ccn_content_get_value(hc, hcs, &pcobuf, &hc, &hcs);
-            // hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
-            result = calloc( 1, sizeof(uintmax_t) );
-            memcpy( result, hc, sizeof(uintmax_t) );
-        }
-        ccn_charbuf_destroy(&ho);
+    // hDump(DUMP_ADDR(hn->buf), DUMP_SIZE(hn->length));
+    GST_INFO ("get_segment step 10");
+    res = ccn_get (h, hn, NULL, timeout, ho, &pcobuf, NULL, 0);
+    GST_INFO ("get_segment step 11, res: %d", res);
+    if (res >= 0) {
+      hc = ho->buf;
+      hcs = ho->length;
+      // hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
+      ccn_content_get_value (hc, hcs, &pcobuf, &hc, &hcs);
+      // hDump( DUMP_ADDR(hc), DUMP_SIZE(hcs));
+      result = calloc (1, sizeof (uintmax_t));
+      memcpy (result, hc, sizeof (uintmax_t));
     }
+    ccn_charbuf_destroy (&ho);
+  }
   GST_INFO ("get_segment step 9");
-    ccn_charbuf_destroy(&hn);
-    return (result);
+  ccn_charbuf_destroy (&hn);
+  return (result);
 }
 
 /**
@@ -898,19 +918,20 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
   GST_DEBUG ("starting, getting connections");
 
   /* setup the connection to ccnx */
-  if( (src->ccn = ccn_create()) == NULL ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("ccn_create failed"));
+  if ((src->ccn = ccn_create ()) == NULL) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL), ("ccn_create failed"));
     return FALSE;
   }
-  if( -1 == ccn_connect( src->ccn, ccndHost() ) ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("ccn_connect failed to %s", ccndHost()));
+  if (-1 == ccn_connect (src->ccn, ccndHost ())) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL), ("ccn_connect failed to %s",
+            ccndHost ()));
     return FALSE;
   }
-  loadKey( src->ccn, &src->sp );
+  loadKey (src->ccn, &src->sp);
 
   /* A closure is what defines what to do when an inbound interest or data arrives */
-  if( (src->ccn_closure = calloc(1, sizeof(struct ccn_closure))) == NULL ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("closure alloc failed"));
+  if ((src->ccn_closure = calloc (1, sizeof (struct ccn_closure))) == NULL) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL), ("closure alloc failed"));
     return FALSE;
   }
 
@@ -920,69 +941,75 @@ gst_ccnxsrc_start (GstBaseSrc * bsrc)
 
   /* Allocate buffers and construct the name from the uri the user gave us */
   GST_INFO ("step 1");
-  if( (p_name = ccn_charbuf_create()) == NULL ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("p_name alloc failed"));
+  if ((p_name = ccn_charbuf_create ()) == NULL) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL), ("p_name alloc failed"));
     return FALSE;
   }
-  if( (src->p_name = ccn_charbuf_create()) == NULL  ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("src->p_name alloc failed"));
+  if ((src->p_name = ccn_charbuf_create ()) == NULL) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL),
+        ("src->p_name alloc failed"));
     return FALSE;
   }
-  if( (i_ret = ccn_name_from_uri(p_name, src->uri)) < 0 ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("name from uri failed for \"%s\"", src->uri));
+  if ((i_ret = ccn_name_from_uri (p_name, src->uri)) < 0) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL),
+        ("name from uri failed for \"%s\"", src->uri));
     return FALSE;
   }
 
   /* Find out what the latest one of these is called, and keep it in our context */
-  ccn_charbuf_append(src->p_name, p_name->buf, p_name->length);
-  i_ret = ccn_resolve_version(src->ccn, src->p_name, CCN_V_HIGHEST,
-                                CCN_VERSION_TIMEOUT);
+  ccn_charbuf_append (src->p_name, p_name->buf, p_name->length);
+  i_ret = ccn_resolve_version (src->ccn, src->p_name, CCN_V_HIGHEST,
+      CCN_VERSION_TIMEOUT);
 
   GST_INFO ("step 20 - name so far...");
   // hDump(src->p_name->buf, src->p_name->length);
   src->i_seg = 0;
-  if (i_ret == 0) { /* name is versioned, so get the meta data to obtain the length */
-    p_seg = get_segment(src->ccn, src->p_name, CCN_HEADER_TIMEOUT);
+  if (i_ret == 0) {             /* name is versioned, so get the meta data to obtain the length */
+    p_seg = get_segment (src->ccn, src->p_name, CCN_HEADER_TIMEOUT);
     if (p_seg != NULL) {
-        src->i_seg = *p_seg;
-        GST_INFO("step 25 - next seg: %d", src->i_seg);
-        free(p_seg);
+      src->i_seg = *p_seg;
+      GST_INFO ("step 25 - next seg: %d", src->i_seg);
+      free (p_seg);
     }
   }
-  ccn_charbuf_destroy(&p_name);
+  ccn_charbuf_destroy (&p_name);
 
   /* Even though the recent segment published is likely to be >> 0, we still need to ask for segment 0 */
   /* because it seems to contain valuable stream information. Attempts to skip segment 0 resulted in no */
   /* proper rendering of the stream on my screen during testing */
-  i_ret = request_segment( src, 0 );
-  if( i_ret < 0 ) {
-    GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("interest sending failed"));
+  i_ret = request_segment (src, 0);
+  if (i_ret < 0) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL),
+        ("interest sending failed"));
     return FALSE;
   }
   src->post_seg = 0;
-  istate = allocInterestState( src );
-  if( ! istate ) { // This should not happen, but maybe
-	GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("trouble allocating interest state structure"));
-	return FALSE;
+  istate = allocInterestState (src);
+  if (!istate) {                // This should not happen, but maybe
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL),
+        ("trouble allocating interest state structure"));
+    return FALSE;
   }
   istate->seg = 0;
   istate->state = OInterest_waiting;
 
   /* Now start up the background work which will fetch all the rest of the R/T segments */
-  eventTask = gst_task_create( ccn_event_thread, src );
-  if( NULL == eventTask ) {
-      GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("creating event thread failed"));
-      return FALSE;
+  eventTask = gst_task_create (ccn_event_thread, src);
+  if (NULL == eventTask) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL),
+        ("creating event thread failed"));
+    return FALSE;
   }
-  src->fifo_cond = g_cond_new();
-  src->fifo_lock = g_mutex_new();
-  gst_task_set_lock( eventTask, &task_mutex );
-  eventCond = g_cond_new();
-  eventLock = g_mutex_new();
-  b_ret = gst_task_start(eventTask);
-  if( FALSE == b_ret ) {
-      GST_ELEMENT_ERROR( src, RESOURCE, READ, (NULL), ("starting event thread failed"));
-      return FALSE;
+  src->fifo_cond = g_cond_new ();
+  src->fifo_lock = g_mutex_new ();
+  gst_task_set_lock (eventTask, &task_mutex);
+  eventCond = g_cond_new ();
+  eventLock = g_mutex_new ();
+  b_ret = gst_task_start (eventTask);
+  if (FALSE == b_ret) {
+    GST_ELEMENT_ERROR (src, RESOURCE, READ, (NULL),
+        ("starting event thread failed"));
+    return FALSE;
   }
   GST_DEBUG ("event thread started");
 
@@ -1064,46 +1091,50 @@ gst_ccnxsrc_unlock_stop (GstBaseSrc * bsrc)
  * \param b_last	flag telling us that this is the last block of data
  */
 static void
-process_segment( Gstccnxsrc *me, const guchar* data, const size_t data_size, const gboolean b_last ) {
-    size_t start_offset = 0;
+process_segment (Gstccnxsrc * me, const guchar * data, const size_t data_size,
+    const gboolean b_last)
+{
+  size_t start_offset = 0;
 
-    if (data_size > 0) {
-        start_offset = me->i_pos % CCN_CHUNK_SIZE;
-        if (start_offset > data_size) {
-            GST_LOG_OBJECT(me, "start_offset %zu > data_size %zu", start_offset, data_size);
-        } else {
-            if ((data_size - start_offset) + me->i_bufoffset > CCN_FIFO_BLOCK_SIZE) {
-                /* won't fit in buffer, release the buffer upstream via the fifo queue */
-  GST_DEBUG ("pushing data");
-                GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
-				fifo_put(me, me->buf);
-                me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
-                me->i_bufoffset = 0;
-            }
-            /* will fit in buffer */
-            memcpy( GST_BUFFER_DATA(me->buf) + me->i_bufoffset, data + start_offset, data_size - start_offset);
-            me->i_bufoffset += (data_size - start_offset);
-        }
+  if (data_size > 0) {
+    start_offset = me->i_pos % CCN_CHUNK_SIZE;
+    if (start_offset > data_size) {
+      GST_LOG_OBJECT (me, "start_offset %zu > data_size %zu", start_offset,
+          data_size);
+    } else {
+      if ((data_size - start_offset) + me->i_bufoffset > CCN_FIFO_BLOCK_SIZE) {
+        /* won't fit in buffer, release the buffer upstream via the fifo queue */
+        GST_DEBUG ("pushing data");
+        GST_BUFFER_SIZE (me->buf) = me->i_bufoffset;
+        fifo_put (me, me->buf);
+        me->buf = gst_buffer_new_and_alloc (CCN_FIFO_BLOCK_SIZE);
+        me->i_bufoffset = 0;
+      }
+      /* will fit in buffer */
+      memcpy (GST_BUFFER_DATA (me->buf) + me->i_bufoffset, data + start_offset,
+          data_size - start_offset);
+      me->i_bufoffset += (data_size - start_offset);
     }
+  }
 
-    /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
-     * and don't express an interest
-     */
-    if (b_last) {
-  GST_DEBUG ("handling last block");
-        if (me->i_bufoffset > 0) { // flush out any last bits we had
-            GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
-            fifo_put(me, me->buf);
-            me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
-            me->i_bufoffset = 0;
-        }
+  /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
+   * and don't express an interest
+   */
+  if (b_last) {
+    GST_DEBUG ("handling last block");
+    if (me->i_bufoffset > 0) {  // flush out any last bits we had
+      GST_BUFFER_SIZE (me->buf) = me->i_bufoffset;
+      fifo_put (me, me->buf);
+      me->buf = gst_buffer_new_and_alloc (CCN_FIFO_BLOCK_SIZE);
+      me->i_bufoffset = 0;
+    }
 /*
  * \todo should emit an eos here instead of the empty buffer
  */
-        GST_BUFFER_SIZE(me->buf) = 0;
-        fifo_put(me, me->buf);
-        me->i_bufoffset = 0;
-	}
+    GST_BUFFER_SIZE (me->buf) = 0;
+    fifo_put (me, me->buf);
+    me->i_bufoffset = 0;
+  }
 }
 
 /**
@@ -1135,41 +1166,45 @@ process_segment( Gstccnxsrc *me, const guchar* data, const size_t data_size, con
  * \param b_last	flag telling us this is the last block of data; which can still arrive out of order of course
  */
 static void
-process_or_queue( Gstccnxsrc *me, const uintmax_t segment, const guchar* data, const size_t data_size, const gboolean b_last ) {
-	CcnxInterestState *istate = NULL;
-	
-	istate = fetchSegmentInterest( me, segment );
-	if( NULL == istate ) {
-		GST_INFO("failed to find segment in interest array: %d", segment);
-		return;
-	}
-	istate->state = OInterest_havedata;
+process_or_queue (Gstccnxsrc * me, const uintmax_t segment, const guchar * data,
+    const size_t data_size, const gboolean b_last)
+{
+  CcnxInterestState *istate = NULL;
 
-	if( me->post_seg == segment ) { // This is the next segment we need
-		GST_INFO("porq - got the segment we need: %d", segment );
-		process_segment( me, data, data_size, b_last );
-		freeInterestState( me, istate );
-		if( 0 == segment ) me->post_seg = me->i_seg; // special case for segment zero
-		else me->post_seg++;
+  istate = fetchSegmentInterest (me, segment);
+  if (NULL == istate) {
+    GST_INFO ("failed to find segment in interest array: %d", segment);
+    return;
+  }
+  istate->state = OInterest_havedata;
 
-		/* Also look to see if other segments have arrived earlier that need to be posted */
-		istate = nextSegmentInterest( me, me->post_seg );
-		while( istate && OInterest_havedata == istate->state ) {
-			GST_INFO("porq - also processing extra segment: %d", istate->seg );
-			process_segment( me, istate->data, istate->size, istate->lastBlock );
-			me->post_seg = 1 + istate->seg; // because we may skip some data, we use this segment to key off of
-			freeInterestState( me, istate );
-			istate = nextSegmentInterest( me, me->post_seg );
-		}
-	} else if(me->post_seg > segment) { // this one is arriving very late, throw it out
-		freeInterestState( me, istate );
-	} else { // This segment needs to await processing in the queue
-		GST_INFO("porq - segment needs to wait: %d", segment );
-		istate->size = data_size;
-		istate->lastBlock = b_last;
-		istate->data = calloc( 1, data_size ); // We need to copy it to our own buffer
-		memcpy( istate->data, data, data_size );
-	}
+  if (me->post_seg == segment) {        // This is the next segment we need
+    GST_INFO ("porq - got the segment we need: %d", segment);
+    process_segment (me, data, data_size, b_last);
+    freeInterestState (me, istate);
+    if (0 == segment)
+      me->post_seg = me->i_seg; // special case for segment zero
+    else
+      me->post_seg++;
+
+    /* Also look to see if other segments have arrived earlier that need to be posted */
+    istate = nextSegmentInterest (me, me->post_seg);
+    while (istate && OInterest_havedata == istate->state) {
+      GST_INFO ("porq - also processing extra segment: %d", istate->seg);
+      process_segment (me, istate->data, istate->size, istate->lastBlock);
+      me->post_seg = 1 + istate->seg;   // because we may skip some data, we use this segment to key off of
+      freeInterestState (me, istate);
+      istate = nextSegmentInterest (me, me->post_seg);
+    }
+  } else if (me->post_seg > segment) {  // this one is arriving very late, throw it out
+    freeInterestState (me, istate);
+  } else {                      // This segment needs to await processing in the queue
+    GST_INFO ("porq - segment needs to wait: %d", segment);
+    istate->size = data_size;
+    istate->lastBlock = b_last;
+    istate->data = calloc (1, data_size);       // We need to copy it to our own buffer
+    memcpy (istate->data, data, data_size);
+  }
 }
 
 /**
@@ -1186,29 +1221,30 @@ process_or_queue( Gstccnxsrc *me, const uintmax_t segment, const guchar* data, c
  * \param me		source context holding the state for this element instance
  */
 static enum ccn_upcall_res
-post_next_interest( Gstccnxsrc *me ) {
-	CcnxInterestState	*is;
-	gint			res;
-	uintmax_t		segment;
+post_next_interest (Gstccnxsrc * me)
+{
+  CcnxInterestState *is;
+  gint res;
+  uintmax_t segment;
 
-	while( me->intWindow < CCN_WINDOW_SIZE ) {
-		/* Ask for the next segment from the producer */
-		me->i_pos = CCN_CHUNK_SIZE * (1 + (me->i_pos / CCN_CHUNK_SIZE));
-		segment = me->i_seg++;
-		res = request_segment(me, segment );
-		if (res < 0) {
-			GST_LOG_OBJECT(me, "trouble sending the next interests");
-			return (CCN_UPCALL_RESULT_ERR);
-		}
-		is = allocInterestState( me );
-		if( ! is ) { // This should not happen, but maybe
-			GST_LOG_OBJECT(me, "trouble allocating interest state structure");
-			return (CCN_UPCALL_RESULT_ERR);
-		}
-		is->seg = segment;
-		is->state = OInterest_waiting;
-	}
-	return CCN_UPCALL_RESULT_OK;
+  while (me->intWindow < CCN_WINDOW_SIZE) {
+    /* Ask for the next segment from the producer */
+    me->i_pos = CCN_CHUNK_SIZE * (1 + (me->i_pos / CCN_CHUNK_SIZE));
+    segment = me->i_seg++;
+    res = request_segment (me, segment);
+    if (res < 0) {
+      GST_LOG_OBJECT (me, "trouble sending the next interests");
+      return (CCN_UPCALL_RESULT_ERR);
+    }
+    is = allocInterestState (me);
+    if (!is) {                  // This should not happen, but maybe
+      GST_LOG_OBJECT (me, "trouble allocating interest state structure");
+      return (CCN_UPCALL_RESULT_ERR);
+    }
+    is->seg = segment;
+    is->state = OInterest_waiting;
+  }
+  return CCN_UPCALL_RESULT_OK;
 }
 
 /**
@@ -1234,160 +1270,160 @@ post_next_interest( Gstccnxsrc *me ) {
  * \retval CCN_UPCALL_RESULT_ERR	some error was encountered
  */
 static enum ccn_upcall_res
-incoming_content(struct ccn_closure *selfp,
-                 enum ccn_upcall_kind kind,
-                 struct ccn_upcall_info *info)
+incoming_content (struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
 {
-    Gstccnxsrc *me = GST_CCNXSRC (selfp->data);
+  Gstccnxsrc *me = GST_CCNXSRC (selfp->data);
 
-    const unsigned char *ccnb = NULL;
-    size_t ccnb_size = 0;
-    const unsigned char *ib = NULL; /* info->interest_ccnb */
-    struct ccn_indexbuf *ic = NULL;
-    unsigned int i;
-    uintmax_t segment;
-    CcnxInterestState *istate = NULL;
-    gint res;
-    const unsigned char *cp;
-    size_t sz;
-    const unsigned char *data = NULL;
-    size_t data_size = 0;
-    gboolean b_last = FALSE;
+  const unsigned char *ccnb = NULL;
+  size_t ccnb_size = 0;
+  const unsigned char *ib = NULL;       /* info->interest_ccnb */
+  struct ccn_indexbuf *ic = NULL;
+  unsigned int i;
+  uintmax_t segment;
+  CcnxInterestState *istate = NULL;
+  gint res;
+  const unsigned char *cp;
+  size_t sz;
+  const unsigned char *data = NULL;
+  size_t data_size = 0;
+  gboolean b_last = FALSE;
 
   GST_INFO ("content has arrived!");
- 
+
   /* Do some basic sanity and type checks to see if we want to process this data */
-    
-  if( CCN_UPCALL_FINAL == kind ) {
-        GST_LOG_OBJECT(me, "CCN upcall final %p", selfp);
-        if (me->i_bufoffset > 0) {
-            GST_BUFFER_SIZE(me->buf) = me->i_bufoffset;
-            fifo_put(me, me->buf);
-            me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
-            me->i_bufoffset = 0;
-        }
+
+  if (CCN_UPCALL_FINAL == kind) {
+    GST_LOG_OBJECT (me, "CCN upcall final %p", selfp);
+    if (me->i_bufoffset > 0) {
+      GST_BUFFER_SIZE (me->buf) = me->i_bufoffset;
+      fifo_put (me, me->buf);
+      me->buf = gst_buffer_new_and_alloc (CCN_FIFO_BLOCK_SIZE);
+      me->i_bufoffset = 0;
+    }
 /*
  * Should emit an eos here instead of the empty buffer
  */
-        GST_BUFFER_SIZE(me->buf) = 0;
-        fifo_put(me, me->buf);
-        me->i_bufoffset = 0;
-        return (CCN_UPCALL_RESULT_OK);
+    GST_BUFFER_SIZE (me->buf) = 0;
+    fifo_put (me, me->buf);
+    me->i_bufoffset = 0;
+    return (CCN_UPCALL_RESULT_OK);
   }
 
-  if( ! info ) return CCN_UPCALL_RESULT_ERR; // Now why would this happen?
+  if (!info)
+    return CCN_UPCALL_RESULT_ERR;       // Now why would this happen?
 
   // show_comps( info->content_ccnb, info->content_comps);
 
-  if( CCN_UPCALL_INTEREST_TIMED_OUT == kind ) {
-        if (selfp != me->ccn_closure) {
-            GST_LOG_OBJECT(me, "CCN Interest timed out on dead closure %p", selfp);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        segment = ccn_ccnb_fetch_segment(info->interest_ccnb, info->interest_comps);
-        GST_INFO ("...looks to be for segment: %d", segment);
-        GST_LOG_OBJECT(me, "CCN upcall reexpress -- timed out");
-		istate = fetchSegmentInterest( me, segment );
-		if( istate ) {
-			if( istate->timeouts > 5 ) {
-				GST_LOG_OBJECT(me, "CCN upcall reexpress -- too many reexpressions");
-				if( segment == me->post_seg ) // We have been waiting for this one...process as an empty block to trigger other activity
-					process_or_queue( me, me->post_seg, NULL, 0, FALSE );
-				else
-					freeInterestState( me, istate );
-				post_next_interest( me ); // make sure to ask for new stuff if needed, or else we stall waiting for nothing
-				return(CCN_UPCALL_RESULT_OK);
-			} else { 
-				istate->timeouts++;
-				return(CCN_UPCALL_RESULT_REEXPRESS);
-			}
-		} else {
-			GST_LOG_OBJECT(me, "segment not found in cache: %d", segment);
-			return(CCN_UPCALL_RESULT_OK);
-		}
+  if (CCN_UPCALL_INTEREST_TIMED_OUT == kind) {
+    if (selfp != me->ccn_closure) {
+      GST_LOG_OBJECT (me, "CCN Interest timed out on dead closure %p", selfp);
+      return (CCN_UPCALL_RESULT_OK);
+    }
+    segment =
+        ccn_ccnb_fetch_segment (info->interest_ccnb, info->interest_comps);
+    GST_INFO ("...looks to be for segment: %d", segment);
+    GST_LOG_OBJECT (me, "CCN upcall reexpress -- timed out");
+    istate = fetchSegmentInterest (me, segment);
+    if (istate) {
+      if (istate->timeouts > 5) {
+        GST_LOG_OBJECT (me, "CCN upcall reexpress -- too many reexpressions");
+        if (segment == me->post_seg)    // We have been waiting for this one...process as an empty block to trigger other activity
+          process_or_queue (me, me->post_seg, NULL, 0, FALSE);
+        else
+          freeInterestState (me, istate);
+        post_next_interest (me);        // make sure to ask for new stuff if needed, or else we stall waiting for nothing
+        return (CCN_UPCALL_RESULT_OK);
+      } else {
+        istate->timeouts++;
+        return (CCN_UPCALL_RESULT_REEXPRESS);
+      }
+    } else {
+      GST_LOG_OBJECT (me, "segment not found in cache: %d", segment);
+      return (CCN_UPCALL_RESULT_OK);
+    }
 
-  } else if( CCN_UPCALL_CONTENT_UNVERIFIED == kind ) {
-        if (selfp != me->ccn_closure) {
-            GST_LOG_OBJECT(me, "CCN unverified content on dead closure %p", selfp);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        return (CCN_UPCALL_RESULT_VERIFY);
+  } else if (CCN_UPCALL_CONTENT_UNVERIFIED == kind) {
+    if (selfp != me->ccn_closure) {
+      GST_LOG_OBJECT (me, "CCN unverified content on dead closure %p", selfp);
+      return (CCN_UPCALL_RESULT_OK);
+    }
+    return (CCN_UPCALL_RESULT_VERIFY);
 
-  } else if ( CCN_UPCALL_CONTENT != kind ) {
-        GST_LOG_OBJECT(me, "CCN upcall result error");
-        return(CCN_UPCALL_RESULT_ERR);
+  } else if (CCN_UPCALL_CONTENT != kind) {
+    GST_LOG_OBJECT (me, "CCN upcall result error");
+    return (CCN_UPCALL_RESULT_ERR);
   }
 
-  segment = ccn_ccnb_fetch_segment(info->content_ccnb, info->content_comps);
+  segment = ccn_ccnb_fetch_segment (info->content_ccnb, info->content_comps);
   GST_INFO ("...looks to be for segment: %d", segment);
   if (selfp != me->ccn_closure) {
-		GST_LOG_OBJECT(me, "CCN content on dead closure %p", selfp);
-		return(CCN_UPCALL_RESULT_OK);
+    GST_LOG_OBJECT (me, "CCN content on dead closure %p", selfp);
+    return (CCN_UPCALL_RESULT_OK);
   }
 
 
-	/* At this point it seems we have a data message we want to process */
+  /* At this point it seems we have a data message we want to process */
 
-    ccnb = info->content_ccnb;
-    ccnb_size = info->pco->offset[CCN_PCO_E];
+  ccnb = info->content_ccnb;
+  ccnb_size = info->pco->offset[CCN_PCO_E];
 
-	/* spit out some debug information */
-    for( i=0; i<5; ++i ) {
-      GST_DEBUG ( "%3d: ", i);
-      if( 0 > ccn_name_comp_get( info->content_ccnb, info->content_comps, i, &cp, &sz ) ) {
-        // fprintf(stderr, "could not get comp\n");
-      } else {
-        // hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
-      }
+  /* spit out some debug information */
+  for (i = 0; i < 5; ++i) {
+    GST_DEBUG ("%3d: ", i);
+    if (0 > ccn_name_comp_get (info->content_ccnb, info->content_comps, i, &cp,
+            &sz)) {
+      // fprintf(stderr, "could not get comp\n");
+    } else {
+      // hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
     }
-    
-	/* go get the data and process it...note that the data pointer here is only temporary, a copy is needed to keep the data */
-    ib = info->interest_ccnb;
-    ic = info->interest_comps;
-    res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
-    if (res < 0) {
-        GST_LOG_OBJECT(me, "CCN error on get value of size");
-		process_or_queue( me, segment, NULL, 0, FALSE ); // process null block to adjust interest array queue
-		post_next_interest( me ); // Keep the data flowing
-        return(CCN_UPCALL_RESULT_ERR);
+  }
+
+  /* go get the data and process it...note that the data pointer here is only temporary, a copy is needed to keep the data */
+  ib = info->interest_ccnb;
+  ic = info->interest_comps;
+  res = ccn_content_get_value (ccnb, ccnb_size, info->pco, &data, &data_size);
+  if (res < 0) {
+    GST_LOG_OBJECT (me, "CCN error on get value of size");
+    process_or_queue (me, segment, NULL, 0, FALSE);     // process null block to adjust interest array queue
+    post_next_interest (me);    // Keep the data flowing
+    return (CCN_UPCALL_RESULT_ERR);
+  }
+
+  /* was this the last block? [code taken from a ccnx tool */
+  /* \todo  the test below should get refactored into the library */
+  if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+      info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+    const unsigned char *finalid = NULL;
+    size_t finalid_size = 0;
+    const unsigned char *nameid = NULL;
+    size_t nameid_size = 0;
+    struct ccn_indexbuf *cc = info->content_comps;
+    ccn_ref_tagged_BLOB (CCN_DTAG_FinalBlockID, ccnb,
+        info->pco->offset[CCN_PCO_B_FinalBlockID],
+        info->pco->offset[CCN_PCO_E_FinalBlockID], &finalid, &finalid_size);
+    if (cc->n < 2)
+      abort ();                 // \todo we need to behave better than this
+    ccn_ref_tagged_BLOB (CCN_DTAG_Component, ccnb,
+        cc->buf[cc->n - 2], cc->buf[cc->n - 1], &nameid, &nameid_size);
+    if (finalid_size == nameid_size
+        && 0 == memcmp (finalid, nameid, nameid_size)) {
+      b_last = TRUE;
     }
+  }
 
-    /* was this the last block? [code taken from a ccnx tool */
-    /* \todo  the test below should get refactored into the library */
-    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
-        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        const unsigned char *finalid = NULL;
-        size_t finalid_size = 0;
-        const unsigned char *nameid = NULL;
-        size_t nameid_size = 0;
-        struct ccn_indexbuf *cc = info->content_comps;
-        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
-                            info->pco->offset[CCN_PCO_B_FinalBlockID],
-                            info->pco->offset[CCN_PCO_E_FinalBlockID],
-                            &finalid,
-                            &finalid_size);
-        if (cc->n < 2) abort(); // \todo we need to behave better than this
-        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
-                            cc->buf[cc->n - 2],
-                            cc->buf[cc->n - 1],
-                            &nameid,
-                            &nameid_size);
-        if (finalid_size == nameid_size && 0 == memcmp(finalid, nameid, nameid_size)) {
-            b_last = TRUE;
-        }
-    }
+  /* a short block can also indicate the end, if the client isn't using FinalBlockID */
+  if (data_size < CCN_CHUNK_SIZE)
+    b_last = TRUE;
 
-    /* a short block can also indicate the end, if the client isn't using FinalBlockID */
-    if (data_size < CCN_CHUNK_SIZE)
-        b_last = TRUE;
+  /* something to process */
+  process_or_queue (me, segment, data, data_size, b_last);
+  post_next_interest (me);
 
-    /* something to process */
-	process_or_queue( me, segment, data, data_size, b_last );
-	post_next_interest( me );
+  if (!b_last)
+    return post_next_interest (me);
 
-	if( ! b_last ) return post_next_interest( me );
-
-    return(CCN_UPCALL_RESULT_OK);
+  return (CCN_UPCALL_RESULT_OK);
 
 }
 
@@ -1462,7 +1498,8 @@ gst_ccnxsrc_uri_set_uri (GstURIHandler * handler, const gchar * uri)
  * \param iface_data	\todo not sure
  */
 static void
-gst_ccnxsrc_uri_handler_init (gpointer g_iface, /*@unused@*/ gpointer iface_data)
+gst_ccnxsrc_uri_handler_init (gpointer g_iface, /*@unused@ */
+    gpointer iface_data)
 {
   GstURIHandlerInterface *iface = (GstURIHandlerInterface *) g_iface;
 

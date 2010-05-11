@@ -48,7 +48,11 @@
 /**
  * Helps with Windows compatibility
  */
-unsigned int  _get_output_format(void) { return 0; }
+unsigned int
+_get_output_format (void)
+{
+  return 0;
+}
 
 #endif
 
@@ -62,11 +66,12 @@ unsigned int  _get_output_format(void) { return 0; }
 gboolean
 plug_init (GstPlugin * ccnx)
 {
-  if( ! gst_element_register (ccnx, "ccnxsrc", GST_RANK_NONE,
-      GST_TYPE_CCNXSRC) ) return FALSE;
-  if( ! gst_element_register (ccnx, "ccnxsink", GST_RANK_NONE,
-      GST_TYPE_CCNXSINK) ) return FALSE;
-      
+  if (!gst_element_register (ccnx, "ccnxsrc", GST_RANK_NONE, GST_TYPE_CCNXSRC))
+    return FALSE;
+  if (!gst_element_register (ccnx, "ccnxsink", GST_RANK_NONE,
+          GST_TYPE_CCNXSINK))
+    return FALSE;
+
   return TRUE;
 }
 
@@ -99,17 +104,11 @@ plug_init (GstPlugin * ccnx)
  *
  */
 
-GST_PLUGIN_DEFINE (
-    GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     PACKAGE,
     "Interface data content to-from a CCNx network",
-    plug_init,
-    VERSION,
-    "LGPL",
-    "I@D",
-    "http://bell-labs.com/"
-)
+    plug_init, VERSION, "LGPL", "I@D", "http://bell-labs.com/")
 
 
 /**

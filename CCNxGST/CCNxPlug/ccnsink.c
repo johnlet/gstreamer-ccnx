@@ -90,29 +90,27 @@ enum
  */
 enum
 {
-  PROP_0
-  , PROP_URI
-  , PROP_SILENT
+  PROP_0, PROP_URI, PROP_SILENT
 };
 
 /**
  * Capabilities of the output sink.
  *
  */
-static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE (
-	"sink",					/**< Name of the element */
-    GST_PAD_SINK,			/**< Type of element, a sink */
-    GST_PAD_ALWAYS,			/**< We always have this PAD */
-    GST_STATIC_CAPS_ANY);	/**< We can accept any kind of input */
+static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
+                                                /**< Name of the element */
+    GST_PAD_SINK,                       /**< Type of element, a sink */
+    GST_PAD_ALWAYS,                     /**< We always have this PAD */
+    GST_STATIC_CAPS_ANY);       /**< We can accept any kind of input */
 
 /**
  * Describe the details for the GST tools to print and such.
  */
-static const GstElementDetails gst_ccnxsink_details = GST_ELEMENT_DETAILS(
-	"CCNX data sink",						/**< Terse description */
-	"Source/Network",						/**< \todo ??? */
-	"Publish data over a CCNx network",		/**< Long description */
-	"John Letourneau <topgun@bell-labs.com" ); /**< Author contact information */
+static const GstElementDetails gst_ccnxsink_details = GST_ELEMENT_DETAILS ("CCNX data sink",
+                                                                        /**< Terse description */
+    "Source/Network",                                                   /**< \todo ??? */
+    "Publish data over a CCNx network",                 /**< Long description */
+    "John Letourneau <topgun@bell-labs.com");      /**< Author contact information */
 
 /**
  * Uses this port if no other port is specified
@@ -137,7 +135,8 @@ static const GstElementDetails gst_ccnxsink_details = GST_ELEMENT_DETAILS(
 /**
  * Signing parameters are initialized with this template
  */
-static struct ccn_signing_params CCNX_DEFAULT_SIGNING_PARAMS = CCN_SIGNING_PARAMS_INIT;
+static struct ccn_signing_params CCNX_DEFAULT_SIGNING_PARAMS =
+    CCN_SIGNING_PARAMS_INIT;
 
 /*
  * Several call-back function prototypes needed in the code below
@@ -153,7 +152,7 @@ static void gst_ccnxsink_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_ccnxsink_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static GstCaps * gst_ccnxsink_getcaps (GstBaseSink * src);
+static GstCaps *gst_ccnxsink_getcaps (GstBaseSink * src);
 
 static GstFlowReturn gst_ccnxsink_publish (GstBaseSink * sink, GstBuffer * buf);
 
@@ -167,7 +166,7 @@ static GstFlowReturn gst_ccnxsink_publish (GstBaseSink * sink, GstBuffer * buf);
  * In our case, there are not initialization steps at this point.
  */
 static void
-_do_init ( /*@unused@*/ GType type )
+_do_init ( /*@unused@ */ GType type)
 {
 
 }
@@ -205,11 +204,10 @@ static void
 gst_ccnxsink_base_init (gpointer gclass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (gclass);
-  
+
   GST_DEBUG_CATEGORY_INIT (gst_ccnxsink_debug, "ccnxsink", 0, "CCNx sink");
 
-  gst_element_class_set_details(element_class,
-     &gst_ccnxsink_details);
+  gst_element_class_set_details (element_class, &gst_ccnxsink_details);
 
   gst_element_class_add_pad_template (element_class,
       gst_static_pad_template_get (&sinktemplate));
@@ -231,8 +229,8 @@ gst_ccnxsink_class_init (GstccnxsinkClass * klass)
 {
   GObjectClass *gobject_class;
   GstBaseSinkClass *gstbasesink_class;
-  
-	GST_DEBUG("CCNxSink: class init");
+
+  GST_DEBUG ("CCNxSink: class init");
 
   gobject_class = (GObjectClass *) klass;
   gstbasesink_class = (GstBaseSinkClass *) klass;
@@ -243,8 +241,9 @@ gst_ccnxsink_class_init (GstccnxsinkClass * klass)
 
   /* Register these properties, their names, and their help information */
   g_object_class_install_property (gobject_class, PROP_URI,
-      g_param_spec_string ("uri", "URI", "URI of the form: ccnx://<content name>",
-          CCNX_DEFAULT_URI, G_PARAM_READWRITE));
+      g_param_spec_string ("uri", "URI",
+          "URI of the form: ccnx://<content name>", CCNX_DEFAULT_URI,
+          G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_SILENT,
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
@@ -256,7 +255,7 @@ gst_ccnxsink_class_init (GstccnxsinkClass * klass)
   gstbasesink_class->stop = gst_ccnxsink_stop;
   gstbasesink_class->get_times = NULL;
   gstbasesink_class->get_caps = gst_ccnxsink_getcaps;
-  gstbasesink_class->render = gst_ccnxsink_publish; // Here in particular is where we process data from the pipeline
+  gstbasesink_class->render = gst_ccnxsink_publish;     // Here in particular is where we process data from the pipeline
 }
 
 /**
@@ -271,14 +270,14 @@ gst_ccnxsink_class_init (GstccnxsinkClass * klass)
  */
 static void
 gst_ccnxsink_init (Gstccnxsink * me,
-    /*@unused@*/ GstccnxsinkClass * gclass )
+    /*@unused@ */ GstccnxsinkClass * gclass)
 {
-	GST_DEBUG("CCNxSink: instance init");
+  GST_DEBUG ("CCNxSink: instance init");
 
   gst_base_sink_set_sync (GST_BASE_SINK (me), FALSE);
 
   me->silent = FALSE;
-  me->uri = g_strdup(CCNX_DEFAULT_URI);
+  me->uri = g_strdup (CCNX_DEFAULT_URI);
   me->name = NULL;
   me->keylocator = NULL;
   me->keystore = NULL;
@@ -289,12 +288,13 @@ gst_ccnxsink_init (Gstccnxsink * me,
   me->signed_info = NULL;
   me->keylocator = NULL;
   me->keystore = NULL;
-  memcpy( &(me->sp), &CCNX_DEFAULT_SIGNING_PARAMS, sizeof(CCNX_DEFAULT_SIGNING_PARAMS) );
+  memcpy (&(me->sp), &CCNX_DEFAULT_SIGNING_PARAMS,
+      sizeof (CCNX_DEFAULT_SIGNING_PARAMS));
   me->expire = CCNX_DEFAULT_EXPIRATION;
   me->segment = 0;
   me->fifo_head = 0;
   me->fifo_tail = 0;
-  me->buf = gst_buffer_new_and_alloc(CCN_FIFO_BLOCK_SIZE);
+  me->buf = gst_buffer_new_and_alloc (CCN_FIFO_BLOCK_SIZE);
   me->obuf = NULL;
 
 }
@@ -315,9 +315,9 @@ gst_ccnxsink_getcaps (GstBaseSink * sink)
 {
   Gstccnxsink *me;
 
-  GST_DEBUG("CCNxSink: get caps");
+  GST_DEBUG ("CCNxSink: get caps");
 
-  me = GST_CCNXSINK (sink);		// Very common to see a cast to the proper structure type
+  me = GST_CCNXSINK (sink);     // Very common to see a cast to the proper structure type
 
   if (me->caps)
     return gst_caps_ref (me->caps);
@@ -332,8 +332,9 @@ gst_ccnxsink_getcaps (GstBaseSink * sink)
  * \return true if the fifo is empty, false otherwise
  */
 static gboolean
-fifo_empty( Gstccnxsink* me ) {
-    return me->fifo_head == me->fifo_tail;
+fifo_empty (Gstccnxsink * me)
+{
+  return me->fifo_head == me->fifo_tail;
 }
 
 /**
@@ -356,36 +357,39 @@ fifo_empty( Gstccnxsink* me ) {
  * \return true if the put succeeded, false otherwise
  */
 static gboolean
-fifo_put(  Gstccnxsink* me, GstBuffer *buf, int overwrite ) {
-    int next;
+fifo_put (Gstccnxsink * me, GstBuffer * buf, int overwrite)
+{
+  int next;
 
-    GST_DEBUG("CCNxSink: fifo putting");
-    
-	next = me->fifo_tail;
-    if( ++next >= CCNX_SINK_FIFO_MAX ) next = 0;
-    if( next  == me->fifo_head ) {
-        g_mutex_lock( me->fifo_lock );
-        if( overwrite ) {
-          if( next == me->fifo_head ) { /* repeat test under a lock */
-            int h = me->fifo_head;
-            if( ++h >= CCNX_SINK_FIFO_MAX ) h = 0; /* throw the head one away */
-			/* need to release the buffer prior to the overwrite, or memory will leak */
-			gst_buffer_unref( me->fifo[ me->fifo_head ] );
-            me->fifo_head = h;
-            GST_LOG_OBJECT(me, "fifo put: overwriting a buffer");
-          }
-        } else {
-	        while( next  == me->fifo_head ) {
-	            GST_DEBUG("FIFO: queue is full");
-	            g_cond_wait( me->fifo_cond, me->fifo_lock );
-	        }
-        }
-        g_mutex_unlock( me->fifo_lock );
-        GST_DEBUG("FIFO: queue is OK");
+  GST_DEBUG ("CCNxSink: fifo putting");
+
+  next = me->fifo_tail;
+  if (++next >= CCNX_SINK_FIFO_MAX)
+    next = 0;
+  if (next == me->fifo_head) {
+    g_mutex_lock (me->fifo_lock);
+    if (overwrite) {
+      if (next == me->fifo_head) {      /* repeat test under a lock */
+        int h = me->fifo_head;
+        if (++h >= CCNX_SINK_FIFO_MAX)
+          h = 0;                /* throw the head one away */
+        /* need to release the buffer prior to the overwrite, or memory will leak */
+        gst_buffer_unref (me->fifo[me->fifo_head]);
+        me->fifo_head = h;
+        GST_LOG_OBJECT (me, "fifo put: overwriting a buffer");
+      }
+    } else {
+      while (next == me->fifo_head) {
+        GST_DEBUG ("FIFO: queue is full");
+        g_cond_wait (me->fifo_cond, me->fifo_lock);
+      }
     }
-    me->fifo[ me->fifo_tail ] = buf;
-    me->fifo_tail = next;
-    return TRUE;
+    g_mutex_unlock (me->fifo_lock);
+    GST_DEBUG ("FIFO: queue is OK");
+  }
+  me->fifo[me->fifo_tail] = buf;
+  me->fifo_tail = next;
+  return TRUE;
 }
 
 /**
@@ -402,22 +406,24 @@ fifo_put(  Gstccnxsink* me, GstBuffer *buf, int overwrite ) {
  * \return buffer containing the next element, NULL if the queue is empty
  */
 /*@null@*/
-static GstBuffer*
-fifo_pop(  Gstccnxsink* me ) {
-    GstBuffer* ans;
-    int next;
-	GST_DEBUG("CCNxSink: fifo popping");
-    if( fifo_empty (me) ) {
-      return NULL;
-    }
-    next = me->fifo_head;
-    ans = me->fifo[next];
-    if( ++next >= CCNX_SINK_FIFO_MAX ) next = 0;
-    g_mutex_lock( me->fifo_lock );
-    me->fifo_head = next;
-    g_cond_signal( me->fifo_cond );
-    g_mutex_unlock( me->fifo_lock );
-    return ans;
+static GstBuffer *
+fifo_pop (Gstccnxsink * me)
+{
+  GstBuffer *ans;
+  int next;
+  GST_DEBUG ("CCNxSink: fifo popping");
+  if (fifo_empty (me)) {
+    return NULL;
+  }
+  next = me->fifo_head;
+  ans = me->fifo[next];
+  if (++next >= CCNX_SINK_FIFO_MAX)
+    next = 0;
+  g_mutex_lock (me->fifo_lock);
+  me->fifo_head = next;
+  g_cond_signal (me->fifo_cond);
+  g_mutex_unlock (me->fifo_lock);
+  return ans;
 }
 
 #include <time.h>
@@ -447,13 +453,13 @@ fifo_pop(  Gstccnxsink* me ) {
  *
  * \return A GST timestamp
  */
-static
-GstClockTime
-tNow() {
+static GstClockTime
+tNow ()
+{
   struct timespec t;
   GstClockTime ans;
 
-  clock_gettime( CLOCK_REALTIME, &t );
+  clock_gettime (CLOCK_REALTIME, &t);
   ans = t.tv_sec;
   ans *= A_BILLION;
   ans += t.tv_nsec;
@@ -471,8 +477,10 @@ tNow() {
  * \param ts	a timespec structure of the time value
  */
 void
-makeTimespec( GstClockTime t, struct timespec * ts ) {
-  if( NULL == ts ) return;
+makeTimespec (GstClockTime t, struct timespec *ts)
+{
+  if (NULL == ts)
+    return;
   ts->tv_sec = t / A_BILLION;
   ts->tv_nsec = t % A_BILLION;
 }
@@ -505,25 +513,27 @@ makeTimespec( GstClockTime t, struct timespec * ts ) {
  * \retval GST_FLOW_ERROR something went wrong
  */
 static GstFlowReturn
-gst_ccnxsink_send ( Gstccnxsink *me, guint8 *data, guint size, /*@unused@*/ GstClockTime ts ) {
-  struct ccn_charbuf  *sname;			/* where we construct the name of this data message */
-  struct ccn_charbuf  *hold;			/* holds the last block published so we can properly manage memory */
-  struct ccn_charbuf  *temp;			/* where we construct the message to send */
-  struct ccn_charbuf  *signed_info;		/* signing data within the message */
-  gint                rc;				/* return status on various calls */
-  guint8              *xferStart;		/* points into the source buffer, data, as we packetize into CCN blocks */
-  size_t               bytesLeft;		/* keeps track of how much more we have to do */
+gst_ccnxsink_send (Gstccnxsink * me, guint8 * data, guint size, /*@unused@ */
+    GstClockTime ts)
+{
+  struct ccn_charbuf *sname;    /* where we construct the name of this data message */
+  struct ccn_charbuf *hold;     /* holds the last block published so we can properly manage memory */
+  struct ccn_charbuf *temp;     /* where we construct the message to send */
+  struct ccn_charbuf *signed_info;      /* signing data within the message */
+  gint rc;                      /* return status on various calls */
+  guint8 *xferStart;            /* points into the source buffer, data, as we packetize into CCN blocks */
+  size_t bytesLeft;             /* keeps track of how much more we have to do */
 
   /* Initialize our local storage and allocate buffers we will need */
   xferStart = data;
   bytesLeft = size;
-  sname = ccn_charbuf_create();
-  temp = ccn_charbuf_create();
-  signed_info = ccn_charbuf_create();
+  sname = ccn_charbuf_create ();
+  temp = ccn_charbuf_create ();
+  signed_info = ccn_charbuf_create ();
 
   /* Hang onto this pointer so we can release the buffer as we exit this function */
   hold = me->lastPublish;
-  
+
 /*
  * I am hanging onto this code for now to handle the day when we want to encode the data.
  * I do not know why id did not work during development, but I am sure it is close to working 8-)
@@ -550,135 +560,138 @@ GST_LOG_OBJECT( me, "send - signing info\n" );
   }
 	*/
 
-  if( me->partial ) { /* We had some left over from the last send */
+  if (me->partial) {            /* We had some left over from the last send */
     size_t extra;
     uintmax_t seg;
 
-	/* find out how much room we have left, and copy over the bytes we have, or need to fill the block */
+    /* find out how much room we have left, and copy over the bytes we have, or need to fill the block */
     extra = CCN_CHUNK_SIZE - me->partial->length;
-    if( extra > bytesLeft ) extra = bytesLeft;
-    GST_LOG_OBJECT( me, "send - had a partial left: %d\n", extra );
-    ccn_charbuf_append( me->partial, xferStart, extra );
+    if (extra > bytesLeft)
+      extra = bytesLeft;
+    GST_LOG_OBJECT (me, "send - had a partial left: %d\n", extra);
+    ccn_charbuf_append (me->partial, xferStart, extra);
 
-	/* Adjust count and pointer to reflect the bytes we have taken */
+    /* Adjust count and pointer to reflect the bytes we have taken */
     bytesLeft -= extra;
     xferStart += extra;
-    
-	/* Filling to the size of the CCN packet means we need to send it out */
-    if( me->partial->length == CCN_CHUNK_SIZE ) {
+
+    /* Filling to the size of the CCN packet means we need to send it out */
+    if (me->partial->length == CCN_CHUNK_SIZE) {
       sname->length = 0;
       seg = me->segment++;
 
-	  /* build up a name starting with the prefix, then the sequence number */
-      ccn_charbuf_append(sname, me->name->buf, me->name->length);
-      ccn_name_append_numeric(sname, CCN_MARKER_SEQNUM, seg);
+      /* build up a name starting with the prefix, then the sequence number */
+      ccn_charbuf_append (sname, me->name->buf, me->name->length);
+      ccn_name_append_numeric (sname, CCN_MARKER_SEQNUM, seg);
       temp->length = 0;
 
-	  /* Signing via this function does a lot of work. The result is a buffer, temp, that is ready to be sent */
-	  ccn_sign_content(me->ccn, temp, sname, &me->sp, me->partial->buf, CCN_CHUNK_SIZE);
-	 //  hDump( sname->buf, sname->length );
-  /*
-   * See the comment above about holding this code.
-   *
-	  if( me->keystore ) {
+      /* Signing via this function does a lot of work. The result is a buffer, temp, that is ready to be sent */
+      ccn_sign_content (me->ccn, temp, sname, &me->sp, me->partial->buf,
+          CCN_CHUNK_SIZE);
+      //  hDump( sname->buf, sname->length );
+      /*
+       * See the comment above about holding this code.
+       *
+       if( me->keystore ) {
 
-		rc = ccn_encode_ContentObject(temp,
-                                       sname,
-                                       signed_info,
-									   me->partial->buf,
-                                       CCN_CHUNK_SIZE,
-                                       NULL,
-                                       ccn_keystore_private_key(me->keystore));
-        if (rc != 0) {
-            GST_LOG_OBJECT( me, "Failed to encode ContentObject (rc == %d)\n", rc);
-            goto Trouble;
-        }
-     */
-		/* send the data message on its way */
-	    rc = ccn_put(me->ccn, temp->buf, temp->length);
-		if (rc < 0) {
-          GST_LOG_OBJECT(me, "ccn_put failed (rc == %d)\n", rc);
-          goto Trouble;
-		}
-        /* free the buffer we used for the partial data */
-		ccn_charbuf_destroy(&me->partial);
-		me->partial = NULL;
+       rc = ccn_encode_ContentObject(temp,
+       sname,
+       signed_info,
+       me->partial->buf,
+       CCN_CHUNK_SIZE,
+       NULL,
+       ccn_keystore_private_key(me->keystore));
+       if (rc != 0) {
+       GST_LOG_OBJECT( me, "Failed to encode ContentObject (rc == %d)\n", rc);
+       goto Trouble;
+       }
+       */
+      /* send the data message on its way */
+      rc = ccn_put (me->ccn, temp->buf, temp->length);
+      if (rc < 0) {
+        GST_LOG_OBJECT (me, "ccn_put failed (rc == %d)\n", rc);
+        goto Trouble;
+      }
+      /* free the buffer we used for the partial data */
+      ccn_charbuf_destroy (&me->partial);
+      me->partial = NULL;
 /*
 } else {
 		GST_LOG_OBJECT( me, "No keystore. What should we do?\n" );
 		goto Trouble;
 	  }
 */
-	}
-  } /* No left over means we can send direct out of the data buffer */
+    }
+  }
 
+  /* No left over means we can send direct out of the data buffer */
   /* Now that we are done with the partial block, go and process the new data in much the same fashion */
-  while( bytesLeft >= CCN_CHUNK_SIZE ) {
+  while (bytesLeft >= CCN_CHUNK_SIZE) {
     uintmax_t seg;
-    GST_LOG_OBJECT( me, "send - bytesLeft: %d\n", bytesLeft );
+    GST_LOG_OBJECT (me, "send - bytesLeft: %d\n", bytesLeft);
     sname->length = 0;
     seg = me->segment++;
-    ccn_charbuf_append(sname, me->name->buf, me->name->length);
-    ccn_name_append_numeric(sname, CCN_MARKER_SEQNUM, seg);
-    GST_LOG_OBJECT( me, "send - name is ready\n" );
+    ccn_charbuf_append (sname, me->name->buf, me->name->length);
+    ccn_name_append_numeric (sname, CCN_MARKER_SEQNUM, seg);
+    GST_LOG_OBJECT (me, "send - name is ready\n");
     temp->length = 0;
 
-	ccn_sign_content(me->ccn, temp, sname, &me->sp, xferStart, CCN_CHUNK_SIZE);
-	 //  hDump( sname->buf, sname->length );
-	  /*
-	  if( me->keystore ) {
+    ccn_sign_content (me->ccn, temp, sname, &me->sp, xferStart, CCN_CHUNK_SIZE);
+    //  hDump( sname->buf, sname->length );
+    /*
+       if( me->keystore ) {
 
-    GST_LOG_OBJECT( me, "send - encoding\n" );
-		rc = ccn_encode_ContentObject(temp,
-                                       sname,
-                                       signed_info,
-				       xferStart,
-                                       CCN_CHUNK_SIZE,
-                                       NULL,
-                                       ccn_keystore_private_key(me->keystore));
-        if (rc != 0) {
-            GST_LOG_OBJECT( me, "Failed to encode ContentObject (rc == %d)\n", rc);
-            goto Trouble;
-        }
-      */
-    GST_LOG_OBJECT( me, "send - putting\n" );
-	rc = ccn_put(me->ccn, temp->buf, temp->length);
-	if (rc < 0) {
-        GST_LOG_OBJECT(me, "ccn_put failed (rc == %d)\n", rc);
-        goto Trouble;
-	}
-      /*
-	  } else {
-		GST_LOG_OBJECT( me, "No keystore. What should we do?\n" );
-		goto Trouble;
-	  }
-*/
-    GST_LOG_OBJECT( me, "send - adjusting buffers\n" );
-	/* msleep(5); */
+       GST_LOG_OBJECT( me, "send - encoding\n" );
+       rc = ccn_encode_ContentObject(temp,
+       sname,
+       signed_info,
+       xferStart,
+       CCN_CHUNK_SIZE,
+       NULL,
+       ccn_keystore_private_key(me->keystore));
+       if (rc != 0) {
+       GST_LOG_OBJECT( me, "Failed to encode ContentObject (rc == %d)\n", rc);
+       goto Trouble;
+       }
+     */
+    GST_LOG_OBJECT (me, "send - putting\n");
+    rc = ccn_put (me->ccn, temp->buf, temp->length);
+    if (rc < 0) {
+      GST_LOG_OBJECT (me, "ccn_put failed (rc == %d)\n", rc);
+      goto Trouble;
+    }
+    /*
+       } else {
+       GST_LOG_OBJECT( me, "No keystore. What should we do?\n" );
+       goto Trouble;
+       }
+     */
+    GST_LOG_OBJECT (me, "send - adjusting buffers\n");
+    /* msleep(5); */
     bytesLeft -= CCN_CHUNK_SIZE;
     xferStart += CCN_CHUNK_SIZE;
-  } /* end of while() */
-  
-  if( bytesLeft ) { /* We have some left over for next time */
-    GST_LOG_OBJECT( me, "send - for next time: %d\n", bytesLeft );
-    me->partial = ccn_charbuf_create();
+  }                             /* end of while() */
+
+  if (bytesLeft) {              /* We have some left over for next time */
+    GST_LOG_OBJECT (me, "send - for next time: %d\n", bytesLeft);
+    me->partial = ccn_charbuf_create ();
     me->partial->length = 0;
-    ccn_charbuf_append( me->partial, xferStart, bytesLeft );
+    ccn_charbuf_append (me->partial, xferStart, bytesLeft);
   }
 
   /* Do proper memory management, then return */
-	ccn_charbuf_destroy(&sname);
-	me->lastPublish = temp;
-	ccn_charbuf_destroy(&hold);
-	ccn_charbuf_destroy(&signed_info);
-	GST_LOG_OBJECT( me, "send - leaving length: %d\n", me->lastPublish->length );
-	return GST_FLOW_OK;
+  ccn_charbuf_destroy (&sname);
+  me->lastPublish = temp;
+  ccn_charbuf_destroy (&hold);
+  ccn_charbuf_destroy (&signed_info);
+  GST_LOG_OBJECT (me, "send - leaving length: %d\n", me->lastPublish->length);
+  return GST_FLOW_OK;
 
 Trouble:
-	ccn_charbuf_destroy(&sname);
-	ccn_charbuf_destroy(&temp);
-	ccn_charbuf_destroy(&signed_info);
-	return GST_FLOW_ERROR;
+  ccn_charbuf_destroy (&sname);
+  ccn_charbuf_destroy (&temp);
+  ccn_charbuf_destroy (&signed_info);
+  return GST_FLOW_ERROR;
 }
 
 /**
@@ -701,13 +714,13 @@ gst_ccnxsink_publish (GstBaseSink * sink, GstBuffer * buffer)
 {
   Gstccnxsink *me;
 
-	GST_DEBUG("CCNxSink: publishing");
+  GST_DEBUG ("CCNxSink: publishing");
 
-    me = GST_CCNXSINK (sink);
+  me = GST_CCNXSINK (sink);
 
-	gst_buffer_ref( buffer );
-	fifo_put(me, buffer, TRUE);
-	return GST_FLOW_OK;
+  gst_buffer_ref (buffer);
+  fifo_put (me, buffer, TRUE);
+  return GST_FLOW_OK;
 }
 
 /**
@@ -730,161 +743,169 @@ gst_ccnxsink_publish (GstBaseSink * sink, GstBuffer * buffer)
  * \retval CCN_UPCALL_RESULT_ERR	some error was encountered
  */
 static enum ccn_upcall_res
-new_interests(struct ccn_closure *selfp,
-                 enum ccn_upcall_kind kind,
-                 struct ccn_upcall_info *info)
+new_interests (struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
 {
-    Gstccnxsink *me = GST_CCNXSINK (selfp->data);
-    struct ccn_charbuf* cb;
-	struct ccn_charbuf* sname = NULL;
-    const unsigned char *cp1, *cp2;
-    size_t sz1;
-    size_t sz2;
-    long lastSeq;
-    struct ccn_signing_params myparams;
-    unsigned int i;
-    int rc;
+  Gstccnxsink *me = GST_CCNXSINK (selfp->data);
+  struct ccn_charbuf *cb;
+  struct ccn_charbuf *sname = NULL;
+  const unsigned char *cp1, *cp2;
+  size_t sz1;
+  size_t sz2;
+  long lastSeq;
+  struct ccn_signing_params myparams;
+  unsigned int i;
+  int rc;
 
 
-	GST_DEBUG ("something has arrived!");
-	GST_DEBUG ("matched is: %d", info->matched_comps); // number of filter components that were matched by the interest
-	cb = interestAsUri(info);
-	GST_DEBUG ("as URI: %s", ccn_charbuf_as_string( cb ));
-	ccn_charbuf_destroy(&cb);
+  GST_DEBUG ("something has arrived!");
+  GST_DEBUG ("matched is: %d", info->matched_comps);    // number of filter components that were matched by the interest
+  cb = interestAsUri (info);
+  GST_DEBUG ("as URI: %s", ccn_charbuf_as_string (cb));
+  ccn_charbuf_destroy (&cb);
 
-	myparams = me->sp;
+  myparams = me->sp;
 
-	/* Some debugging stuff */
-	for( i=0; i<10; ++i ) {
-      const unsigned char *cp;
-      size_t sz;
-      GST_DEBUG ( "%3d: ", i);
-      if( 0 > ccn_name_comp_get( info->interest_ccnb, info->interest_comps, i, &cp, &sz ) ) {
-        // fprintf(stderr, "could not get comp\n");
-        break;
-      } else {
-        // hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
-      }
+  /* Some debugging stuff */
+  for (i = 0; i < 10; ++i) {
+    const unsigned char *cp;
+    size_t sz;
+    GST_DEBUG ("%3d: ", i);
+    if (0 > ccn_name_comp_get (info->interest_ccnb, info->interest_comps, i,
+            &cp, &sz)) {
+      // fprintf(stderr, "could not get comp\n");
+      break;
+    } else {
+      // hDump( DUMP_ADDR( cp ), DUMP_SIZE( sz ) );
     }
- 
-    switch (kind) {
+  }
+
+  switch (kind) {
 
     case CCN_UPCALL_FINAL:
-        GST_LOG_OBJECT(me, "CCN upcall final %p", selfp);
-        return (0);
+      GST_LOG_OBJECT (me, "CCN upcall final %p", selfp);
+      return (0);
 
     case CCN_UPCALL_INTEREST_TIMED_OUT:
-        if (selfp != me->ccn_closure) {
-            GST_LOG_OBJECT(me, "CCN Interest timed out on dead closure %p", selfp);
-            return(0);
-        }
-        GST_LOG_OBJECT(me, "CCN upcall reexpress -- timed out");
-        if (me->timeouts > 5) {
-            GST_LOG_OBJECT(me, "CCN upcall reexpress -- too many reexpressions");
-            return(0);
-        }
-        me->timeouts++;
-        return(CCN_UPCALL_RESULT_REEXPRESS);
+      if (selfp != me->ccn_closure) {
+        GST_LOG_OBJECT (me, "CCN Interest timed out on dead closure %p", selfp);
+        return (0);
+      }
+      GST_LOG_OBJECT (me, "CCN upcall reexpress -- timed out");
+      if (me->timeouts > 5) {
+        GST_LOG_OBJECT (me, "CCN upcall reexpress -- too many reexpressions");
+        return (0);
+      }
+      me->timeouts++;
+      return (CCN_UPCALL_RESULT_REEXPRESS);
 
     case CCN_UPCALL_CONTENT_UNVERIFIED:
-        if (selfp != me->ccn_closure) {
-            GST_LOG_OBJECT(me, "CCN unverified content on dead closure %p", selfp);
-            return(0);
-        }
-        return (CCN_UPCALL_RESULT_VERIFY);
+      if (selfp != me->ccn_closure) {
+        GST_LOG_OBJECT (me, "CCN unverified content on dead closure %p", selfp);
+        return (0);
+      }
+      return (CCN_UPCALL_RESULT_VERIFY);
 
     case CCN_UPCALL_CONTENT:
-        if (selfp != me->ccn_closure) {
-            GST_LOG_OBJECT(me, "CCN content on dead closure %p", selfp);
-            return(0);
-        }
-        break;
+      if (selfp != me->ccn_closure) {
+        GST_LOG_OBJECT (me, "CCN content on dead closure %p", selfp);
+        return (0);
+      }
+      break;
 
     case CCN_UPCALL_CONTENT_BAD:
-	GST_LOG_OBJECT(me, "Content signature verification failed! Discarding.\n");
-	return (CCN_UPCALL_RESULT_ERR);
+      GST_LOG_OBJECT (me,
+          "Content signature verification failed! Discarding.\n");
+      return (CCN_UPCALL_RESULT_ERR);
 
     case CCN_UPCALL_CONSUMED_INTEREST:
-        GST_LOG_OBJECT(me, "Upcall consumed interest\n");
-        return (CCN_UPCALL_RESULT_ERR); /* no data */
+      GST_LOG_OBJECT (me, "Upcall consumed interest\n");
+      return (CCN_UPCALL_RESULT_ERR);   /* no data */
 
-	/* Here is the most interesting case...when an interest arrives */
+      /* Here is the most interesting case...when an interest arrives */
     case CCN_UPCALL_INTEREST:
-        GST_INFO("We got an interest\n");
-        myparams.freshness = 1; /* meta data is old very quickly */
+      GST_INFO ("We got an interest\n");
+      myparams.freshness = 1;   /* meta data is old very quickly */
 
-		/* See if any meta information is sought */
-		for( i=0; ; ++i ) {
-		  if( 0 > ccn_name_comp_get( info->interest_ccnb, info->interest_comps, i, &cp1, &sz1 ) ) {
-			cp1 = NULL;
-			break;
-		  } else {
-			  if( ! strncmp( (const char*)cp1, "_meta_", 6 ) ) { // OK, found meta, now which one is needed?
-				  if( 0 > ccn_name_comp_get( info->interest_ccnb, info->interest_comps, i+1, &cp2, &sz2 ) ) {
-					GST_LOG_OBJECT(me, "CCN interest received with invalid meta request");
-					cp1 = NULL;
-				  }
-				  break;
-			  } // Component not meta, keep looking
-		  }
-		} // At this point, i is left pointing at '_meta_' or at the end of component list
+      /* See if any meta information is sought */
+      for (i = 0;; ++i) {
+        if (0 > ccn_name_comp_get (info->interest_ccnb, info->interest_comps, i,
+                &cp1, &sz1)) {
+          cp1 = NULL;
+          break;
+        } else {
+          if (!strncmp ((const char *) cp1, "_meta_", 6)) {     // OK, found meta, now which one is needed?
+            if (0 > ccn_name_comp_get (info->interest_ccnb,
+                    info->interest_comps, i + 1, &cp2, &sz2)) {
+              GST_LOG_OBJECT (me,
+                  "CCN interest received with invalid meta request");
+              cp1 = NULL;
+            }
+            break;
+          }                     // Component not meta, keep looking
+        }
+      }                         // At this point, i is left pointing at '_meta_' or at the end of component list
 
-        if( cp1 ) {
-          // hDump( DUMP_ADDR(cp1), DUMP_SIZE(sz1) );
-          // hDump( DUMP_ADDR(cp2), DUMP_SIZE(sz2) );
-          if( strncmp( (const char*)cp2, ".segment", 8 ) ) goto Exit_Interest; /* not a match */
+      if (cp1) {
+        // hDump( DUMP_ADDR(cp1), DUMP_SIZE(sz1) );
+        // hDump( DUMP_ADDR(cp2), DUMP_SIZE(sz2) );
+        if (strncmp ((const char *) cp2, ".segment", 8))
+          goto Exit_Interest;   /* not a match */
 
-          /* publish what segment we are up to in reply to the meta request */
-          lastSeq = me->segment - 1;
-          GST_INFO("sending meta data....segment: %d", lastSeq);
-          
-          sname = ccn_charbuf_create();
-          ccn_name_init(sname);
-          rc = ccn_name_append_components(sname, info->interest_ccnb,
-							info->interest_comps->buf[0], info->interest_comps->buf[i+2]);
-          if (rc < 0) goto Error_Interest;
-          // rc = ccn_create_version(me->ccn, sname, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0);
-          // if (rc < 0) goto Error_Interest;
-          me->temp->length=0;
-          rc = ccn_sign_content(me->ccn, me->temp, sname, &myparams,
-                          &lastSeq, sizeof(lastSeq));
-          // hDump(DUMP_ADDR(sname->buf), DUMP_SIZE(sname->length));
-          if (rc != 0) {
-              GST_LOG_OBJECT(me, "Failed to encode ContentObject (rc == %d)\n", rc);
-              goto Error_Interest;
-          }
-          
-          GST_INFO("sending meta data...");
-		  // hDump(DUMP_ADDR(me->temp->buf), DUMP_SIZE(me->temp->length));
-          rc = ccn_put(me->ccn, me->temp->buf, me->temp->length);
-          me->temp->length = 0;
-          if (rc < 0) {
-              GST_LOG_OBJECT(me, "ccn_put failed (res == %d)\n", rc);
-              goto Error_Interest;
-          }
-          GST_INFO("meta data sent");
+        /* publish what segment we are up to in reply to the meta request */
+        lastSeq = me->segment - 1;
+        GST_INFO ("sending meta data....segment: %d", lastSeq);
 
-        } else goto Exit_Interest; /* do not have _meta_ */
-        
-Exit_Interest:
-        ccn_charbuf_destroy(&sname);
-        break;
-        
-Error_Interest:
-        ccn_charbuf_destroy(&sname);
-        return CCN_UPCALL_RESULT_ERR;
+        sname = ccn_charbuf_create ();
+        ccn_name_init (sname);
+        rc = ccn_name_append_components (sname, info->interest_ccnb,
+            info->interest_comps->buf[0], info->interest_comps->buf[i + 2]);
+        if (rc < 0)
+          goto Error_Interest;
+        // rc = ccn_create_version(me->ccn, sname, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0);
+        // if (rc < 0) goto Error_Interest;
+        me->temp->length = 0;
+        rc = ccn_sign_content (me->ccn, me->temp, sname, &myparams,
+            &lastSeq, sizeof (lastSeq));
+        // hDump(DUMP_ADDR(sname->buf), DUMP_SIZE(sname->length));
+        if (rc != 0) {
+          GST_LOG_OBJECT (me, "Failed to encode ContentObject (rc == %d)\n",
+              rc);
+          goto Error_Interest;
+        }
+
+        GST_INFO ("sending meta data...");
+        // hDump(DUMP_ADDR(me->temp->buf), DUMP_SIZE(me->temp->length));
+        rc = ccn_put (me->ccn, me->temp->buf, me->temp->length);
+        me->temp->length = 0;
+        if (rc < 0) {
+          GST_LOG_OBJECT (me, "ccn_put failed (res == %d)\n", rc);
+          goto Error_Interest;
+        }
+        GST_INFO ("meta data sent");
+
+      } else
+        goto Exit_Interest;     /* do not have _meta_ */
+
+    Exit_Interest:
+      ccn_charbuf_destroy (&sname);
+      break;
+
+    Error_Interest:
+      ccn_charbuf_destroy (&sname);
+      return CCN_UPCALL_RESULT_ERR;
 
 
     default:
-        GST_LOG_OBJECT(me, "CCN upcall result error");
-        return(CCN_UPCALL_RESULT_ERR);
-    }
+      GST_LOG_OBJECT (me, "CCN upcall result error");
+      return (CCN_UPCALL_RESULT_ERR);
+  }
 
 
-    me->timeouts = 0;
+  me->timeouts = 0;
 
 
-    return(CCN_UPCALL_RESULT_OK);
+  return (CCN_UPCALL_RESULT_OK);
 
 }
 
@@ -902,44 +923,48 @@ Error_Interest:
  * \param me		context sink element for which the socket is for
  */
 static void
-setup_ccn(Gstccnxsink* me) {
+setup_ccn (Gstccnxsink * me)
+{
   struct ccn *ccn;
-  
+
   GST_DEBUG ("CCNxSink: setup name...");
-  if( (me->name = ccn_charbuf_create()) == NULL ) {
-    GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("name alloc failed"));
+  if ((me->name = ccn_charbuf_create ()) == NULL) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL), ("name alloc failed"));
     return;
   }
-  if( ccn_name_from_uri(me->name, me->uri) < 0 ) {
-    GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("name from uri failed"));
+  if (ccn_name_from_uri (me->name, me->uri) < 0) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL), ("name from uri failed"));
     return;
   }
 
   GST_DEBUG ("CCNxSink: creating ccn object");
-  if( (ccn = ccn_create()) == NULL ) {
-    GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("ccn_create failed"));
+  if ((ccn = ccn_create ()) == NULL) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL), ("ccn_create failed"));
     return;
   }
   me->ccn = ccn;
   GST_DEBUG ("CCNxSink: connecting");
-  if( -1 == ccn_connect( me->ccn, ccndHost() ) ) {
-    GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("ccn_connect failed to %s", ccndHost()));
+  if (-1 == ccn_connect (me->ccn, ccndHost ())) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL), ("ccn_connect failed to %s",
+            ccndHost ()));
     return;
   }
 
   GST_DEBUG ("CCNxSink: setting name version");
-  if (0 > ccn_create_version(ccn, me->name, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0)) {
-      GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("ccn_create_version() failed"));
-      return;
+  if (0 > ccn_create_version (ccn, me->name,
+          CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0)) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL),
+        ("ccn_create_version() failed"));
+    return;
   }
 
 
   GST_DEBUG ("CCNxSink: setting up keystore");
   /*
-  me->keystore = fetchStore();
-  if( me->keystore ) me->keylocator = makeLocator( ccn_keystore_public_key(me->keystore) );
-  */
-  loadKey( me->ccn, &me->sp );
+     me->keystore = fetchStore();
+     if( me->keystore ) me->keylocator = makeLocator( ccn_keystore_public_key(me->keystore) );
+   */
+  loadKey (me->ccn, &me->sp);
   GST_DEBUG ("CCNxSink: done; have keys!");
 }
 
@@ -958,40 +983,43 @@ setup_ccn(Gstccnxsink* me) {
  * \param me		context sink element where the fifo queues are allocated
  */
 static void
-check_fifo(Gstccnxsink* me) {
+check_fifo (Gstccnxsink * me)
+{
   GstClockTime ts;
   gint i;
   guint size;
   guint8 *data;
   GstBuffer *buffer;
 
-  for( i=0; i<3; ++i ) {
-	if( fifo_empty(me) ) return;
-	if( ! (buffer = fifo_pop(me)) ) return;
-	size = GST_BUFFER_SIZE (buffer);
-	data = GST_BUFFER_DATA (buffer);
-	ts = 0;
-  
-	GST_INFO("CCNxSink: pubish size: %d\n", size);
-	if( 0 == ts || GST_CLOCK_TIME_NONE == ts )
-	  ts = me->ts;
-	if( 0 == ts || GST_CLOCK_TIME_NONE == ts ) {
-	  ts = tNow();
-	  me->ts = ts;
-	}
+  for (i = 0; i < 3; ++i) {
+    if (fifo_empty (me))
+      return;
+    if (!(buffer = fifo_pop (me)))
+      return;
+    size = GST_BUFFER_SIZE (buffer);
+    data = GST_BUFFER_DATA (buffer);
+    ts = 0;
 
-	GST_INFO("CCNxSink: pubish time: %0X\n", ts);
-	gst_ccnxsink_send( me, data, size, ts );
-	gst_buffer_unref( buffer );
+    GST_INFO ("CCNxSink: pubish size: %d\n", size);
+    if (0 == ts || GST_CLOCK_TIME_NONE == ts)
+      ts = me->ts;
+    if (0 == ts || GST_CLOCK_TIME_NONE == ts) {
+      ts = tNow ();
+      me->ts = ts;
+    }
+
+    GST_INFO ("CCNxSink: pubish time: %0X\n", ts);
+    gst_ccnxsink_send (me, data, size, ts);
+    gst_buffer_unref (buffer);
   }
-  
+
 }
 
-static GstTask	*eventTask;				/**< -> to a GST task structure */
-static GMutex	*eventLock;				/**< -> a lock that helps control the task */
-static GCond	*eventCond;				/**< -> a condition structure to help with synchronization */
-static GStaticRecMutex	task_mutex		/**< I forget why we use this in this way */
-			= G_STATIC_REC_MUTEX_INIT;
+static GstTask *eventTask;                              /**< -> to a GST task structure */
+static GMutex *eventLock;                               /**< -> a lock that helps control the task */
+static GCond *eventCond;                                /**< -> a condition structure to help with synchronization */
+static GStaticRecMutex task_mutex               /**< I forget why we use this in this way */
+    = G_STATIC_REC_MUTEX_INIT;
 
 /**
  * Base loop for the background CCN task
@@ -1003,20 +1031,21 @@ static GStaticRecMutex	task_mutex		/**< I forget why we use this in this way */
  * \param data		the task context information setup by the parent sink element thread
  */
 static void
-ccn_event_thread(void *data) {
-  Gstccnxsink* me = (Gstccnxsink*) data;
+ccn_event_thread (void *data)
+{
+  Gstccnxsink *me = (Gstccnxsink *) data;
   struct ccn_charbuf *filtName;
   struct ccn_charbuf *temp;
   int res = 0;
 
   GST_DEBUG ("CCNxSink event: *** event thread starting");
-  
-    temp = ccn_charbuf_create();
-	filtName = ccn_charbuf_create();
+
+  temp = ccn_charbuf_create ();
+  filtName = ccn_charbuf_create ();
 
   /* A closure is what defines what to do when an inbound interest arrives */
-  if( (me->ccn_closure = calloc(1, sizeof(struct ccn_closure))) == NULL ) {
-    GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("closure alloc failed"));
+  if ((me->ccn_closure = calloc (1, sizeof (struct ccn_closure))) == NULL) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL), ("closure alloc failed"));
     return;
   }
 
@@ -1024,33 +1053,33 @@ ccn_event_thread(void *data) {
   me->ccn_closure->data = me;
   me->ccn_closure->p = new_interests;
   me->timeouts = 0;
-  ccn_charbuf_append( filtName, me->name->buf, me->name->length );
-  
+  ccn_charbuf_append (filtName, me->name->buf, me->name->length);
+
   /* This call will set up a handler for interests we expect to get from clients */
 
   // hDump(DUMP_ADDR(filtName->buf), DUMP_SIZE(filtName->length));
-  ccn_set_interest_filter(me->ccn, filtName, me->ccn_closure);
+  ccn_set_interest_filter (me->ccn, filtName, me->ccn_closure);
   GST_DEBUG ("CCNxSink event: interest filter registered\n");
 
   /* Some debugging information */
   temp->length = 0;
-  ccn_uri_append(temp, me->name->buf, me->name->length, TRUE);
-  GST_DEBUG ("CCNxSink event: using uri: %s\n", ccn_charbuf_as_string(temp));
-  
+  ccn_uri_append (temp, me->name->buf, me->name->length, TRUE);
+  GST_DEBUG ("CCNxSink event: using uri: %s\n", ccn_charbuf_as_string (temp));
+
   /* Now that the interest is registered, we loop around waiting for something to do */
   /* We pass control to ccnx for a while so it can work with any incoming or outgoing data */
   /* and then we check our fifo queue for work to do. That's about it! */
   /* We check to see if any problems have caused our ccnd connection to fail, and we reconnect */
   while (res >= 0) {
-      GST_DEBUG ("CCNxSink event: *** looping");
-      res = ccn_run(me->ccn, 50);
-	  check_fifo(me);
-      if (res < 0 && ccn_get_connection_fd(me->ccn) == -1) {
-          GST_DEBUG ("CCNxSink event: need to reconnect...");
-          /* Try reconnecting, after a bit of delay */
-          msleep((30 + (getpid() % 30)) * 1000);
-          res = ccn_connect(me->ccn, ccndHost() );
-      }
+    GST_DEBUG ("CCNxSink event: *** looping");
+    res = ccn_run (me->ccn, 50);
+    check_fifo (me);
+    if (res < 0 && ccn_get_connection_fd (me->ccn) == -1) {
+      GST_DEBUG ("CCNxSink event: need to reconnect...");
+      /* Try reconnecting, after a bit of delay */
+      msleep ((30 + (getpid () % 30)) * 1000);
+      res = ccn_connect (me->ccn, ccndHost ());
+    }
   }
   GST_DEBUG ("CCNxSink event: *** event thread ending");
 }
@@ -1083,32 +1112,34 @@ gst_ccnxsink_start (GstBaseSink * bsink)
   gboolean b_ret = FALSE;
 
   me = GST_CCNXSINK (bsink);
-  me->temp = ccn_charbuf_create();
-  me->lastPublish = ccn_charbuf_create();
-  
+  me->temp = ccn_charbuf_create ();
+  me->lastPublish = ccn_charbuf_create ();
+
   GST_DEBUG ("CCNxSink: starting, getting connections");
 
   GST_DEBUG ("CCNxSink: step 1, %s", me->uri);
 
   /* setup the connection to ccnx */
-  setup_ccn( me );
+  setup_ccn (me);
   GST_DEBUG ("CCNxSink: ccn is setup");
 
   /* setup and start the background task */
-  eventTask = gst_task_create( ccn_event_thread, me );
-  if( NULL == eventTask ) {
-      GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("creating event thread failed"));
-      return FALSE;
+  eventTask = gst_task_create (ccn_event_thread, me);
+  if (NULL == eventTask) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL),
+        ("creating event thread failed"));
+    return FALSE;
   }
-  me->fifo_cond = g_cond_new();
-  me->fifo_lock = g_mutex_new();
-  gst_task_set_lock( eventTask, &task_mutex );
-  eventCond = g_cond_new();
-  eventLock = g_mutex_new();
-  b_ret = gst_task_start(eventTask);
-  if( FALSE == b_ret ) {
-      GST_ELEMENT_ERROR( me, RESOURCE, READ, (NULL), ("starting event thread failed"));
-      return FALSE;
+  me->fifo_cond = g_cond_new ();
+  me->fifo_lock = g_mutex_new ();
+  gst_task_set_lock (eventTask, &task_mutex);
+  eventCond = g_cond_new ();
+  eventLock = g_mutex_new ();
+  b_ret = gst_task_start (eventTask);
+  if (FALSE == b_ret) {
+    GST_ELEMENT_ERROR (me, RESOURCE, READ, (NULL),
+        ("starting event thread failed"));
+    return FALSE;
   }
   GST_DEBUG ("CCNxSink: event thread started");
 
@@ -1128,8 +1159,9 @@ static gboolean
 gst_ccnxsink_stop (GstBaseSink * bsink)
 {
   Gstccnxsink *me = GST_CCNXSINK (bsink);
-  
-  if(me->buf) fifo_put( me, me->buf, TRUE );
+
+  if (me->buf)
+    fifo_put (me, me->buf, TRUE);
 
   GST_DEBUG ("stopping, closing connections");
 
@@ -1148,27 +1180,28 @@ gst_ccnxsink_set_uri (Gstccnxsink * me, const GValue * gv)
 {
   gchar *protocol;
   const gchar *uri;
-  
+
   /* cast to the proper type, then do some basic checks */
-  uri = g_value_get_string( gv );
-	GST_DEBUG("CCNxSink: setting uri: %s\n", uri);
-  
-  if( NULL == uri ) {
+  uri = g_value_get_string (gv);
+  GST_DEBUG ("CCNxSink: setting uri: %s\n", uri);
+
+  if (NULL == uri) {
     g_free (me->uri);
-    me->uri = g_strdup(CCNX_DEFAULT_URI);
+    me->uri = g_strdup (CCNX_DEFAULT_URI);
     return TRUE;
   }
 
   /* we are specific as to what protocol can be used in the URI */
   protocol = gst_uri_get_protocol (uri);
-  if( ! protocol ) goto wrong_protocol;
+  if (!protocol)
+    goto wrong_protocol;
   if (strcmp (protocol, "ccnx") != 0)
     goto wrong_protocol;
   g_free (protocol);
 
   /* Free the old value before setting to the new attribute value */
   g_free (me->uri);
-  me->uri = g_strdup(uri);
+  me->uri = g_strdup (uri);
 
   return TRUE;
 
@@ -1199,10 +1232,10 @@ gst_ccnxsink_set_property (GObject * object, guint prop_id,
 {
   Gstccnxsink *me = GST_CCNXSINK (object);
 
-	GST_DEBUG("CCNxSink: set property: %d\n", prop_id);
+  GST_DEBUG ("CCNxSink: set property: %d\n", prop_id);
   switch (prop_id) {
     case PROP_URI:
-      gst_ccnxsink_set_uri( me, value );
+      gst_ccnxsink_set_uri (me, value);
       break;
     case PROP_SILENT:
       me->silent = g_value_get_boolean (value);
@@ -1229,7 +1262,7 @@ gst_ccnxsink_get_property (GObject * object, guint prop_id,
 
   switch (prop_id) {
     case PROP_URI:
-      g_value_set_string(value, me->uri);
+      g_value_set_string (value, me->uri);
       break;
     case PROP_SILENT:
       g_value_set_boolean (value, me->silent);
@@ -1249,7 +1282,8 @@ gst_ccnxsink_get_property (GObject * object, guint prop_id,
  * \param obj		element context to have its resources released
  */
 static void
-gst_ccnxsink_finalize(GObject *obj) {
+gst_ccnxsink_finalize (GObject * obj)
+{
 
   Gstccnxsink *me;
 
