@@ -1,12 +1,23 @@
 Downloading
 ===========
-This project can be cloned with git to your local machine. It is not important where you create the
-copy on your machine.
+This project can be cloned with git to your local machine from github.
+It is not important where you create the copy on your machine.
 
 Dependencies
 ============
 We assume that you already have the necessary gstreamer environment installed on your system that will
-support building your own plug-in. Pakcages we have loaded into our Linux environment include:
+support building your own plug-in. Pakcages we have loaded that work in our Linux environment include:
+	gstreamer-plugins-good-0.10.21-1
+	gstreamer-plugins-bad-free-0.10.18-1
+	gstreamer-plugins-base-devel-0.10.28-1
+	PackageKit-gstreamer-plugin-0.5.7-2
+	gstreamer-devel-0.10.28-2
+	gstreamer-plugins-ugly-0.10.13-1
+	gstreamer-plugins-base-0.10.28-1
+	gstreamer-0.10.28-2
+	gstreamer-ffmpeg-0.10.10-1
+	gstreamer-tools-0.10.28-2
+
 
 We also assume you have the CCNx loaded and built for your platform. See http://www.ccnx.org/ for more details.
 
