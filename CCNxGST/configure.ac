@@ -1,5 +1,10 @@
 AC_PREREQ([2.61])
 AC_INIT([CCNxPlugin], [0.2.0], [topgun@bell-labs.com])
+AC_CONFIG_MACRO_DIR([m4])
+
+
+AS_VERSION(CCNxPlugin, CCNx_PLUGIN_VERSION, 0, 2, 0, 1,
+    CCNx_PLUGIN_CVS="no", CCNx_PLUGIN_CVS="yes")
 
 dnl versions of gstreamer and plugins-base
 GST_MAJORMINOR=0.10
@@ -22,6 +27,7 @@ AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 
 dnl make aclocal work in maintainer mode
 AC_SUBST(ACLOCAL_AMFLAGS, "-I m4")
+m4_pattern_allow([^PKG_])
 
 AM_CONFIG_HEADER(config.h)
 
@@ -61,6 +67,8 @@ dnl Give error and exit if we don't have pkgconfig
 if test "x$HAVE_PKGCONFIG" = "xno"; then
   AC_MSG_ERROR(you need to have pkgconfig installed!)
 fi
+
+PKG_CHECK_MODULES([PKG_CCN], [ccn-1.0 >= 0.2], HAVE_CCN=yes, HAVE_CCN=no)
 
 dnl Now we're ready to ask for gstreamer libs and cflags
 dnl And we can also ask for the right version of gstreamer
@@ -138,12 +146,18 @@ if test -z "$DOXYGEN"; then
 fi
 AM_CONDITIONAL([HAVE_DOXYGEN],[test -n "$DOXYGEN"])
 
+CCN_CPP_FLAGS="${PKG_CCN_CFLAGS}"
+CCN_LDFLAGS="${PKG_CCN_LIBS}"
 # Have CCNx dir?
 if test -z "$CCN_DIR"; then
-  AC_MSG_ERROR(you need to specify where CCNx is installed!)
+  if test "x${HAVE_CCN}" = "xno"; then
+    AC_MSG_ERROR(you need to specify where CCNx is installed!)
+  fi
+else
+# Override any pkgconfig entry
+  CCN_CPP_FLAGS="-I$CCN_DIR/include"
+  CCN_LDFLAGS="-L$CCN_DIR/lib -lccn"
 fi
-CCN_CPP_FLAGS="-I$CCN_DIR/include"
-CCN_LDFLAGS="-L$CCN_DIR/lib"
 AC_SUBST(CCN_CPP_FLAGS)
 AC_SUBST(CCN_LDFLAGS)
 

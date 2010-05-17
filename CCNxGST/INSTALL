@@ -3,15 +3,27 @@ Downloading
 This project can be cloned with git to your local machine. It is not important where you create the
 copy on your machine.
 
+Dependencies
+============
+We assume that you already have the necessary gstreamer environment installed on your system that will
+support building your own plug-in. Pakcages we have loaded into our Linux environment include:
+
+We also assume you have the CCNx loaded and built for your platform. See http://www.ccnx.org/ for more details.
+
 Linux - Build
 =============
 The typical auto-build steps should be followed:
-  ./configure --with-ccn-dir=<prefix to where ccnx was installed>
+  ./configure [--with-ccn-dir=<prefix to where ccnx was installed>]
   make install
 
 The plug-in file will be located in: <prefix-path>/lib/gstreamer-0.10/libccnx.so
-The build requires the libccn.a and headers from ccnx, thus you need to specify their location during
-the configure step.
+The build requires the libccn.a and headers from ccnx. If your CCNx has a pkgconfig file,
+the configure script will find it that way. If not, or if you wish to override that location,
+you need to specify the location during the configure step as shown above.
+
+If you require creating the configure script using the autotools, use the supplied:
+  ./autogen.sh
+This gstreamer supplied script creates the proper environment for the m4 macros etc.
 
 MSVC - Configuration
 =============

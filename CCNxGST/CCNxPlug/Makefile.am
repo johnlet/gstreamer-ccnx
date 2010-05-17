@@ -19,16 +19,16 @@ libccnx_la_SOURCES = CCNxPlugin.c ccnsrc.c ccnsink.c utils.c
 
 # names_SOURCES = names.c
 # names_CPPFLAGS = -I/home/topgun/test/include
-# names_LDADD = -L/home/topgun/test/lib -lccn -ldl -lcrypto
+# names_LDADD = -L/home/topgun/test/lib -ldl -lcrypto
 # fetch_SOURCES = fetch.c
 # fetch_CPPFLAGS = -I/home/topgun/test/include
-# fetch_LDADD = -L/home/topgun/test/lib -lccn -ldl -lcrypto
+# fetch_LDADD = -L/home/topgun/test/lib -ldl -lcrypto
 
 # flags used to compile this plugin
 # add other _CFLAGS and _LIBS as needed
 libccnx_la_CFLAGS = $(GST_CFLAGS) @CCN_CPP_FLAGS@
 libccnx_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS) $(GSTCTRL_LIBS)
-libccnx_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) @CCN_LDFLAGS@ -lccn -lcrypto
+libccnx_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) @CCN_LDFLAGS@ -lcrypto
 libccnx_la_LIBTOOLFLAGS = --tag=disable-static
 
 # headers we need but don't want installed
